@@ -1,9 +1,9 @@
-import { summarize, timelineLayout } from '../src/entities/activity/lib/statistics.js';
+import { summarize, timelineLayout } from '../src/entities/activity/lib/statistics.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dayBounds, localDate, periodDays, shiftDate, unionDuration } from '../src/shared/lib/date.js';
+import { dayBounds, localDate, periodDays, shiftDate, unionDuration } from '../src/shared/lib/date.ts';
 
-test('union merges nested, adjacent and overlapping intervals', () => {
+void test('union merges nested, adjacent and overlapping intervals', () => {
   assert.equal(
     unionDuration([
       [5, 10],
@@ -18,7 +18,7 @@ test('union merges nested, adjacent and overlapping intervals', () => {
   assert.equal(unionDuration([]), 0);
 });
 
-test('parallel work counts once overall and independently per category', () => {
+void test('parallel work counts once overall and independently per category', () => {
   const categories = [
     { id: 'code', is_work: true },
     { id: 'study', is_work: true },
@@ -38,7 +38,7 @@ test('parallel work counts once overall and independently per category', () => {
   );
 });
 
-test('sessions crossing midnight are clipped; active sessions stop at now', () => {
+void test('sessions crossing midnight are clipped; active sessions stop at now', () => {
   const stats = summarize(
     [
       { category_id: 'a', start_at: 10, end_at: 80 },
@@ -54,7 +54,7 @@ test('sessions crossing midnight are clipped; active sessions stop at now', () =
   assert.equal(summarize([{ category_id: 'a', start_at: 200, end_at: 300 }], [], 0, 100, 100).total, 0);
 });
 
-test('calendar uses local days, Monday weeks, leap years and month boundaries', () => {
+void test('calendar uses local days, Monday weeks, leap years and month boundaries', () => {
   assert.equal(shiftDate('2024-03-01', -1), '2024-02-29');
   assert.equal(periodDays('2024-02-20', 'month').length, 29);
   assert.deepEqual(periodDays('2026-10-23', 'week'), [
@@ -71,7 +71,7 @@ test('calendar uses local days, Monday weeks, leap years and month boundaries', 
   assert.equal(localDate(b), '2026-10-24');
 });
 
-test('timeline allocates lanes per overlap cluster and clips day boundaries', () => {
+void test('timeline allocates lanes per overlap cluster and clips day boundaries', () => {
   const layout = timelineLayout(
     [
       { id: 'a', start_at: 0, end_at: 30 },
@@ -83,9 +83,9 @@ test('timeline allocates lanes per overlap cluster and clips day boundaries', ()
     90,
     90,
   );
-  assert.equal(layout.find((x) => x.id === 'a').start, 5);
-  assert.equal(layout.find((x) => x.id === 'd').end, 90);
-  assert.equal(layout.find((x) => x.id === 'a').lanes, 2);
-  assert.equal(layout.find((x) => x.id === 'b').lane, layout.find((x) => x.id === 'c').lane);
-  assert.equal(layout.find((x) => x.id === 'd').lanes, 1);
+  assert.equal(layout.find((x) => x.id === 'a')?.start, 5);
+  assert.equal(layout.find((x) => x.id === 'd')?.end, 90);
+  assert.equal(layout.find((x) => x.id === 'a')?.lanes, 2);
+  assert.equal(layout.find((x) => x.id === 'b')?.lane, layout.find((x) => x.id === 'c')?.lane);
+  assert.equal(layout.find((x) => x.id === 'd')?.lanes, 1);
 });

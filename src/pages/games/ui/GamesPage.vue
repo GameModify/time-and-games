@@ -1,14 +1,14 @@
-<script setup>
+<script setup lang="ts">
+import type { Game } from '../../../shared/api/contracts.ts';
+import type { EditorView } from '../../../features/record-editor/index.ts';
+
 import { toRefs } from 'vue';
 import { Gamepad2, Pencil, Plus, Search, Star, Clock3, Trophy, Library, Play } from 'lucide-vue-next';
-import { shortDate, posterFailed } from '../../../shared/lib/format.js';
-import { statuses, gameMinutes } from '../../../entities/game/index.js';
-import { duration } from '../../../shared/lib/date.js';
-import { useGameLibrary } from '../model/useGameLibrary.js';
-const props = defineProps({
-  games: { type: Array, required: true },
-  editor: { type: Object, required: true },
-});
+import { shortDate, posterFailed } from '../../../shared/lib/format.ts';
+import { statuses, gameMinutes } from '../../../entities/game/index.ts';
+import { duration } from '../../../shared/lib/date.ts';
+import { useGameLibrary } from '../model/useGameLibrary.ts';
+const props = defineProps<{ games: Game[]; editor: EditorView }>();
 const { games } = toRefs(props);
 const {
   search,
@@ -93,7 +93,10 @@ const { importReport, open, editGame } = toRefs(props.editor);
   </div>
   <div class="library-period">
     <label
-      >Когда пройдены<select :value="completionPeriod" @change="setPeriod($event.target.value)">
+      >Когда пройдены<select
+        :value="completionPeriod"
+        @change="setPeriod(($event.target as HTMLInputElement).value)"
+      >
         <option value="all">За всё время</option>
         <option value="month">В этом месяце</option>
         <option value="last-month">В прошлом месяце</option>

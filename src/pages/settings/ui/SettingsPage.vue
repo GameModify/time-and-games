@@ -1,4 +1,8 @@
-<script setup>
+<script setup lang="ts">
+import type { Category } from '../../../shared/api/contracts.ts';
+import type { EditorView } from '../../../features/record-editor/index.ts';
+import type { ThemeView } from '../../../features/appearance/index.ts';
+
 import { toRefs } from 'vue';
 import {
   ArrowDownToLine,
@@ -13,13 +17,13 @@ import {
   Sun,
   Trash2,
 } from 'lucide-vue-next';
-import { activityIcons as icons } from '../../../entities/activity/index.js';
-const props = defineProps({
-  categories: { type: Array, required: true },
-  groupNames: { type: Array, required: true },
-  editor: { type: Object, required: true },
-  appearance: { type: Object, required: true },
-});
+import { activityIcons as icons } from '../../../entities/activity/index.ts';
+const props = defineProps<{
+  categories: Category[];
+  groupNames: string[];
+  editor: EditorView;
+  appearance: ThemeView;
+}>();
 const { categories, groupNames } = toRefs(props);
 const { theme, setTheme } = toRefs(props.appearance);
 const { editCategory, remove, readBackup, open } = toRefs(props.editor);

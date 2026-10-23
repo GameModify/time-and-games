@@ -5,7 +5,7 @@ export const nav = [
   { id: 'analytics', title: 'Статистика', icon: BarChart3 },
   { id: 'settings', title: 'Настройки', icon: Settings2 },
 ];
-export const titles = {
+export const titles: Record<string, [string, string]> = {
   dashboard: ['Твой день, в деталях', 'Каждый момент - часть большой истории.'],
   games: ['Следующее приключение', 'Твои миры, впечатления и пройденные истории.'],
   analytics: ['Время в перспективе', 'Посмотри, из чего складываются твои дни.'],

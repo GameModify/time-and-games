@@ -1,7 +1,8 @@
+import type { UnwrapNestedRefs } from 'vue';
 import { ref } from 'vue';
 export function useTheme() {
   const theme = ref(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
-  function setTheme(value) {
+  function setTheme(value: 'light' | 'dark') {
     theme.value = value;
     document.documentElement.dataset.theme = value;
     document
@@ -15,3 +16,5 @@ export function useTheme() {
   }
   return { theme, setTheme };
 }
+
+export type ThemeView = UnwrapNestedRefs<ReturnType<typeof useTheme>>;

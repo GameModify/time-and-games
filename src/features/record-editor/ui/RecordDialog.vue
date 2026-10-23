@@ -1,13 +1,15 @@
-<script setup>
+<script setup lang="ts">
+import type { EditorView } from '../model/useRecordEditor.ts';
+
 import { toRefs } from 'vue';
+
 import { ArrowDownToLine, Gamepad2, LoaderCircle, Plus, Search, Trash2, X } from 'lucide-vue-next';
-import { duration } from '../../../shared/lib/date.js';
-import { statuses } from '../../../entities/game/index.js';
-import { createBackdropDismiss } from '../lib/backdrop.js';
-const props = defineProps({ editor: { type: Object, required: true } });
+import { duration } from '../../../shared/lib/date.ts';
+import { statuses } from '../../../entities/game/index.ts';
+import { createBackdropDismiss } from '../lib/backdrop.ts';
+const props = defineProps<{ editor: EditorView }>();
 const {
   modal,
-  modalElement,
   form,
   isGameSession,
   modalError,
@@ -33,7 +35,9 @@ const {
   syncSessionDuration,
   setSessionDuration,
 } = toRefs(props.editor);
-const backdrop = createBackdropDismiss(() => props.editor.close());
+const backdrop = createBackdropDismiss(() => {
+  props.editor.close();
+});
 </script>
 <template>
   <div
@@ -44,7 +48,7 @@ const backdrop = createBackdropDismiss(() => props.editor.close());
     @pointercancel="backdrop.cancel"
   >
     <section
-      ref="modalElement"
+      :ref="editor.setModalElement"
       class="modal"
       :class="{ 'wide-modal': modal === 'steam' }"
       role="dialog"

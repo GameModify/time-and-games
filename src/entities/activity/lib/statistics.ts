@@ -1,7 +1,21 @@
-import { unionDuration, dayBounds, periodDays } from '../../../shared/lib/date.js';
-export function summarize(sessions, categories, from, to, now = Date.now()) {
+import type {
+  ActivityCategory,
+  ActivitySession,
+  TimelineSession,
+} from '../../../shared/api/contracts.ts';
+import { unionDuration, dayBounds, periodDays } from '../../../shared/lib/date.ts';
+export function summarize<C extends ActivityCategory>(
+  sessions: ActivitySession[],
+  categories: C[],
+  from: number,
+  to: number,
+  now = Date.now(),
+) {
   const clipped = sessions
-    .map((s) => ({ ...s, interval: [Math.max(s.start_at, from), Math.min(s.end_at ?? now, to)] }))
+    .map((s) => ({
+      ...s,
+      interval: [Math.max(s.start_at, from), Math.min(s.end_at ?? now, to)] as [number, number],
+    }))
     .filter((s) => s.interval[1] > s.interval[0]);
   const byCategory = categories.map((c) => ({
     ...c,
@@ -17,7 +31,13 @@ export function summarize(sessions, categories, from, to, now = Date.now()) {
   };
 }
 
-export function activityBuckets(sessions, categories, date, view, now = Date.now()) {
+export function activityBuckets<C extends ActivityCategory>(
+  sessions: ActivitySession[],
+  categories: C[],
+  date: string,
+  view: string,
+  now = Date.now(),
+) {
   const days = periodDays(date, view);
   if (view !== 'day')
     return days.map((d) => ({
@@ -36,15 +56,26 @@ export function activityBuckets(sessions, categories, date, view, now = Date.now
   return buckets;
 }
 
-export function timelineLayout(sessions, from, to, now = Date.now()) {
+export function timelineLayout<S extends TimelineSession>(
+  sessions: S[],
+  from: number,
+  to: number,
+  now = Date.now(),
+) {
   const items = sessions
-    .map((s) => ({ ...s, start: Math.max(from, s.start_at), end: Math.min(to, s.end_at ?? now) }))
+    .map((s) => ({
+      ...s,
+      start: Math.max(from, s.start_at),
+      end: Math.min(to, s.end_at ?? now),
+      lane: 0,
+      lanes: 1,
+    }))
     .filter((s) => s.end > s.start)
     .sort((a, b) => a.start - b.start || b.end - a.end);
-  let cluster = [],
+  let cluster: (S & { start: number; end: number; lane: number; lanes: number })[] = [],
     clusterEnd = 0;
   function flush() {
-    const lanes = [];
+    const lanes: number[] = [];
     for (const item of cluster) {
       let lane = lanes.findIndex((end) => end <= item.start);
       if (lane < 0) lane = lanes.length;
@@ -67,7 +98,7 @@ export function timelineLayout(sessions, from, to, now = Date.now()) {
   return items;
 }
 
-export function timelineRect(start, end, origin, pixelsPerHour = 72) {
+export function timelineRect(start: number, end: number, origin: number, pixelsPerHour = 72) {
   return {
     top: ((start - origin) / 3600000) * pixelsPerHour,
     height: ((end - start) / 3600000) * pixelsPerHour,

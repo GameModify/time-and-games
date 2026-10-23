@@ -1,4 +1,7 @@
-<script setup>
+<script setup lang="ts">
+import type { WorkspaceView } from '../../../features/workspace/index.ts';
+import type { EditorView } from '../../../features/record-editor/index.ts';
+
 import { computed, toRefs } from 'vue';
 import {
   Activity,
@@ -18,15 +21,12 @@ import {
   Square,
   Timer,
 } from 'lucide-vue-next';
-import { clock, shortDate, weekday, posterFailed } from '../../../shared/lib/format.js';
-import { duration, localDate } from '../../../shared/lib/date.js';
-import { activityIcons as icons } from '../../../entities/activity/index.js';
-import { statuses } from '../../../entities/game/index.js';
+import { clock, shortDate, weekday, posterFailed } from '../../../shared/lib/format.ts';
+import { duration, localDate } from '../../../shared/lib/date.ts';
+import { activityIcons as icons } from '../../../entities/activity/index.ts';
+import { statuses } from '../../../entities/game/index.ts';
 import PeriodChart from './PeriodChart.vue';
-const props = defineProps({
-  model: { type: Object, required: true },
-  editor: { type: Object, required: true },
-});
+const props = defineProps<{ model: WorkspaceView; editor: EditorView }>();
 const {
   page,
   date,
@@ -74,7 +74,7 @@ const donutGradient = computed(() => {
           .map((c) => {
             const start = cursor;
             cursor += (c.duration / total) * 100;
-            return c.color + ' ' + start + '% ' + cursor + '%';
+            return `${c.color} ${start}% ${cursor}%`;
           })
           .join(',') +
         ')'
@@ -222,7 +222,7 @@ const donutGradient = computed(() => {
               aria-label="Дата просмотра"
               type="date"
               :value="date"
-              @change="changeDate($event.target.value)" /></label
+              @change="changeDate(($event.target as HTMLInputElement).value)" /></label
           ><button class="icon-button" aria-label="Следующий период" @click="step(1)">
             <ChevronRight :size="17" /></button
           ><button class="today-button" @click="changeDate(localDate())">Сегодня</button>

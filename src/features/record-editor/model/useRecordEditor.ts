@@ -1,9 +1,21 @@
+import type { UnwrapNestedRefs } from 'vue';
+import type { Category, Game, Session, SteamResult } from '../../../shared/api/contracts.ts';
+import type {
+  EditorDependencies,
+  EditorForm,
+  EditorValues,
+  ModalKind,
+  RecordResource,
+} from './types.ts';
+import { emptyEditorForm } from './types.ts';
+import { errorMessage } from '../../../shared/lib/errors.ts';
 import { computed, ref, nextTick, onMounted, onUnmounted } from 'vue';
-import { api } from '../../../shared/api/client.js';
-import { localInput } from '../../../shared/lib/date.js';
-import { clock } from '../../../shared/lib/format.js';
-import { playtimeFields, playtimeMinutes } from '../../../entities/game/index.js';
-export function useRecordEditor(workspace) {
+import { steamResultSchema, importResultSchema, backupSchema } from '../../../shared/api/contracts.ts';
+import { api, readApi } from '../../../shared/api/client.ts';
+import { localInput } from '../../../shared/lib/date.ts';
+import { clock } from '../../../shared/lib/format.ts';
+import { playtimeFields, playtimeMinutes } from '../../../entities/game/index.ts';
+export function useRecordEditor(workspace: EditorDependencies) {
   const {
     categories,
     groupNames,
@@ -18,15 +30,15 @@ export function useRecordEditor(workspace) {
     category,
     gameName,
   } = workspace;
-  let previousFocus,
+  let previousFocus: HTMLElement | null,
     searchVersion = 0;
-  const modal = ref(null);
+  const modal = ref<ModalKind | null>(null);
 
-  const modalElement = ref(null);
+  const modalElement = ref<HTMLElement | null>(null);
 
-  const form = ref({});
+  const form = ref<EditorForm>(emptyEditorForm());
   const isGameSession = computed(() =>
-    (form.value.category_ids || []).some((id) =>
+    form.value.category_ids.some((id) =>
       categories.value.some((c) => c.id === id && (c.icon === 'gamepad' || c.name === 'Игры')),
     ),
   );
@@ -37,7 +49,7 @@ export function useRecordEditor(workspace) {
 
   const steamQuery = ref('');
 
-  const steamResults = ref([]);
+  const steamResults = ref<SteamResult[]>([]);
 
   const steamSearched = ref(false);
 
@@ -61,29 +73,38 @@ export function useRecordEditor(workspace) {
     reset: 'Сброс данных',
   };
 
-  function open(type, values = {}) {
-    previousFocus = document.activeElement;
+  function setModalElement(element: unknown) {
+    modalElement.value = element instanceof HTMLElement ? element : null;
+  }
+
+  function open(type: ModalKind, values: EditorValues = {}) {
+    previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     modalError.value = '';
-    form.value = { ...values };
+    form.value = {
+      ...emptyEditorForm(),
+      ...values,
+      started_at: values.started_at || '',
+      completed_at: values.completed_at || '',
+    };
     modal.value = type;
-    nextTick(() => modalElement.value?.querySelector('input,select,button')?.focus());
+    void nextTick(() => modalElement.value?.querySelector<HTMLElement>('input,select,button')?.focus());
   }
 
   function close() {
     if (saving.value) return;
     modal.value = null;
     steamKey.value = '';
-    nextTick(() => previousFocus?.focus());
+    void nextTick(() => previousFocus?.focus());
   }
 
-  function onKey(e) {
+  function onKey(e: KeyboardEvent) {
     if (!modal.value) return;
     if (e.key === 'Escape') close();
     if (e.key === 'Tab') {
       const targets = [
-        ...modalElement.value.querySelectorAll(
+        ...(modalElement.value?.querySelectorAll<HTMLElement>(
           'button:not(:disabled),input:not(:disabled),select,textarea,a[href]',
-        ),
+        ) ?? []),
       ].filter((el) => el.getClientRects().length);
       const first = targets[0],
         last = targets.at(-1);
@@ -97,7 +118,7 @@ export function useRecordEditor(workspace) {
     }
   }
 
-  function editSession(s) {
+  function editSession(s?: Session) {
     const start = new Date(`${date.value}T${clock(Date.now())}`);
     open(
       'session',
@@ -121,7 +142,7 @@ export function useRecordEditor(workspace) {
     syncSessionDuration();
   }
 
-  function editGame(g) {
+  function editGame(g?: Game) {
     open(
       'game',
       g
@@ -146,7 +167,7 @@ export function useRecordEditor(workspace) {
 
   function syncSessionDuration() {
     const minutes = form.value.end
-      ? Math.max(0, Math.round((+new Date(form.value.end) - new Date(form.value.start)) / 60000))
+      ? Math.max(0, Math.round((+new Date(form.value.end) - +new Date(form.value.start)) / 60000))
       : 0;
     const fields = playtimeFields(minutes);
     form.value.duration_hours = fields.hours;
@@ -161,11 +182,11 @@ export function useRecordEditor(workspace) {
       form.value.end = minutes ? localInput(start + minutes * 60000) : '';
       modalError.value = '';
     } catch (e) {
-      modalError.value = e.message;
+      modalError.value = errorMessage(e);
     }
   }
 
-  function editCategory(c) {
+  function editCategory(c?: Category) {
     open(
       'category',
       c ? { ...c } : { name: '', group_name: 'Работа', color: '#8e77ff', is_work: false },
@@ -195,7 +216,7 @@ export function useRecordEditor(workspace) {
       } else if (modal.value === 'game') {
         const payload = {
           ...f,
-          rating: f.rating === '' ? null : f.rating,
+          rating: f.rating,
           playtime_minutes: playtimeMinutes(f.playtime_hours, f.playtime_remainder),
         };
         await api(f.id ? `/games/${f.id}` : '/games', f.id ? 'PATCH' : 'POST', payload);
@@ -207,23 +228,29 @@ export function useRecordEditor(workspace) {
       } else if (modal.value === 'reset') {
         await api('/reset', 'POST', { confirmation: f.confirmation });
         selected.value = [];
-      } else if (modal.value === 'delete') await api(`/${f.resource}/${f.id}`, 'DELETE');
+      } else if (modal.value === 'delete') {
+        if (!f.id) throw new Error('Запись не выбрана');
+        await api(`/${f.resource}/${f.id}`, 'DELETE');
+      }
       saving.value = false;
       close();
       await load();
       flash('Готово, изменения сохранены');
     } catch (e) {
-      modalError.value = e.message;
+      modalError.value = errorMessage(e);
     } finally {
       saving.value = false;
     }
   }
 
-  function remove(resource, item) {
+  function remove(
+    resource: RecordResource,
+    item: { id?: string; name?: string; title?: string; category_id?: string },
+  ) {
     open('delete', {
       resource,
       id: item.id,
-      name: item.name || item.title || category(item.category_id).name,
+      name: item.name || item.title || category(item.category_id || '').name,
     });
   }
 
@@ -234,62 +261,66 @@ export function useRecordEditor(workspace) {
     modalError.value = '';
     steamSearched.value = false;
     try {
-      const rows = await api(`/steam/search?q=${encodeURIComponent(query)}`);
+      const rows = await readApi(
+        `/steam/search?q=${encodeURIComponent(query)}`,
+        steamResultSchema.array(),
+      );
       if (version === searchVersion) {
         steamResults.value = rows;
         steamSearched.value = true;
       }
     } catch (e) {
-      if (version === searchVersion) modalError.value = e.message;
+      if (version === searchVersion) modalError.value = errorMessage(e);
     } finally {
       if (version === searchVersion) steamBusy.value = false;
     }
   }
 
-  async function importSteam(owned) {
+  async function importSteam(owned: boolean) {
     saving.value = true;
     modalError.value = '';
     importReport.value = '';
     try {
-      const result = await api(
-        `/steam/import-${owned ? 'owned' : 'installed'}`,
-        'POST',
-        owned ? { steam_id: steamId.value, api_key: steamKey.value } : { steam_path: steamPath.value },
+      const result = importResultSchema.parse(
+        await api(
+          `/steam/import-${owned ? 'owned' : 'installed'}`,
+          'POST',
+          owned ? { steam_id: steamId.value, api_key: steamKey.value } : { steam_path: steamPath.value },
+        ),
       );
       importReport.value = `Найдено: ${result.found}. Добавлено: ${result.added}. Уже в библиотеке: ${result.skipped}.`;
       await load();
     } catch (e) {
-      modalError.value = e.message;
+      modalError.value = errorMessage(e);
     } finally {
       saving.value = false;
       steamKey.value = '';
     }
   }
 
-  async function readBackup(e) {
-    const file = e.target.files?.[0];
-    e.target.value = '';
+  async function readBackup(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
     if (!file) return;
     try {
       if (file.size > 25 * 1024 * 1024) throw new Error('Файл больше 25 МБ');
-      const data = JSON.parse(await file.text());
-      if (
-        data.format !== 'time-and-games-backup' ||
-        !Array.isArray(data.sessions) ||
-        !Array.isArray(data.games) ||
-        !Array.isArray(data.categories)
-      )
-        throw new Error('Это не резервная копия Time & Games');
+      const data = backupSchema.parse(JSON.parse(await file.text()) as unknown);
       open('backup', { data });
     } catch (e) {
-      error.value = e.message;
+      error.value = errorMessage(e);
     }
   }
-  onMounted(() => window.addEventListener('keydown', onKey));
-  onUnmounted(() => window.removeEventListener('keydown', onKey));
+  onMounted(() => {
+    window.addEventListener('keydown', onKey);
+  });
+  onUnmounted(() => {
+    window.removeEventListener('keydown', onKey);
+  });
   return {
     modal,
     modalElement,
+    setModalElement,
     form,
     isGameSession,
     modalError,
@@ -324,3 +355,6 @@ export function useRecordEditor(workspace) {
     setSessionDuration,
   };
 }
+
+export type EditorModel = ReturnType<typeof useRecordEditor>;
+export type EditorView = UnwrapNestedRefs<EditorModel>;

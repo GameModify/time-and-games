@@ -1,15 +1,18 @@
-<script setup>
+<script setup lang="ts">
+import type { Category } from '../../../shared/api/contracts.ts';
+import type { activityBuckets } from '../../../entities/activity/index.ts';
+
 import { computed } from 'vue';
-import { duration } from '../../../shared/lib/date.js';
-import { shortDate, weekday } from '../../../shared/lib/format.js';
-const props = defineProps({
-  buckets: { type: Array, required: true },
-  categories: { type: Array, required: true },
-  view: { type: String, required: true },
-});
-defineEmits(['open-day']);
+import { duration } from '../../../shared/lib/date.ts';
+import { shortDate, weekday } from '../../../shared/lib/format.ts';
+const props = defineProps<{
+  buckets: ReturnType<typeof activityBuckets<Category>>;
+  categories: (Category & { duration: number })[];
+  view: string;
+}>();
+defineEmits<{ 'open-day': [date: string] }>();
 const maximum = computed(() => Math.max(1, ...props.buckets.map((b) => b.categoryTotal)));
-function description(b) {
+function description(b: (typeof props.buckets)[number]) {
   return `${props.view === 'day' ? b.label : shortDate(b.date)} · Реальное время: ${duration(b.total)}. ${b.byCategory
     .filter((c) => c.duration)
     .map((c) => `${c.name}: ${duration(c.duration)}`)

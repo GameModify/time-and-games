@@ -1,13 +1,13 @@
-<script setup>
+<script setup lang="ts">
 import { reactive, toRefs } from 'vue';
 import { Check, LoaderCircle, Moon, Plus, ShieldCheck, Sun, X } from 'lucide-vue-next';
-import { ActivityPage } from '../pages/activity/index.js';
-import { GamesPage } from '../pages/games/index.js';
-import { SettingsPage } from '../pages/settings/index.js';
-import { useRecordEditor, RecordDialog } from '../features/record-editor/index.js';
-import { useTheme } from '../features/appearance/index.js';
-import { useWorkspace } from './model/useWorkspace.js';
-import { nav, titles } from './config/navigation.js';
+import { ActivityPage } from '../pages/activity/index.ts';
+import { GamesPage } from '../pages/games/index.ts';
+import { SettingsPage } from '../pages/settings/index.ts';
+import { useRecordEditor, RecordDialog } from '../features/record-editor/index.ts';
+import { useTheme } from '../features/appearance/index.ts';
+import { useWorkspace } from '../features/workspace/index.ts';
+import { nav, titles } from './config/navigation.ts';
 import AppMark from '../shared/ui/AppMark.vue';
 const workspace = useWorkspace();
 const workspaceView = reactive(workspace);
@@ -86,8 +86,10 @@ const { theme, setTheme } = toRefs(appearance);
             <div class="eyebrow">
               {{ page === 'dashboard' ? 'КАЖДЫЙ МОМЕНТ ИМЕЕТ ЗНАЧЕНИЕ' : 'ТВОЁ ВРЕМЯ И ТВОИ ИГРЫ' }}
             </div>
-            <h1>{{ titles[page][0] }}<span v-if="page === 'dashboard'" class="heading-dot">.</span></h1>
-            <p>{{ titles[page][1] }}</p>
+            <h1>
+              {{ titles[page]?.[0] }}<span v-if="page === 'dashboard'" class="heading-dot">.</span>
+            </h1>
+            <p>{{ titles[page]?.[1] }}</p>
           </div>
           <button v-if="page === 'dashboard'" class="button secondary" @click="editSession()">
             <Plus :size="17" />Добавить запись</button

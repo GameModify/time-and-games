@@ -1,17 +1,21 @@
+import type { UnwrapNestedRefs } from 'vue';
+import type { Category, Game, Session } from '../../../shared/api/contracts.ts';
+import { errorMessage } from '../../../shared/lib/errors.ts';
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
-import { readNavigation, navigationHash } from './navigationState.js';
-import { api } from '../../shared/api/client.js';
-import { dayBounds, localDate, periodDays, shiftDate } from '../../shared/lib/date.js';
+import { readNavigation, navigationHash } from '../../../shared/lib/navigationState.ts';
+import { bootstrapSchema, sessionSchema } from '../../../shared/api/contracts.ts';
+import { api, readApi } from '../../../shared/api/client.ts';
+import { dayBounds, localDate, periodDays, shiftDate } from '../../../shared/lib/date.ts';
 import {
   summarize,
   timelineLayout,
   activityBuckets,
   timelineRect,
-} from '../../entities/activity/index.js';
+} from '../../../entities/activity/index.ts';
 export function useWorkspace() {
-  let tick,
-    refreshTimer,
-    noticeTimer,
+  let tick: ReturnType<typeof setInterval>,
+    refreshTimer: ReturnType<typeof setInterval>,
+    noticeTimer: ReturnType<typeof setTimeout>,
     requestVersion = 0;
   const saved = readNavigation(window.location.hash);
   const page = ref(saved.page);
@@ -23,24 +27,25 @@ export function useWorkspace() {
   const display = ref(saved.display);
   watch(
     [page, date, view, display],
-    () =>
+    () => {
       window.history.replaceState(
         null,
         '',
         navigationHash({ page: page.value, date: date.value, view: view.value, display: display.value }),
-      ),
+      );
+    },
     { flush: 'sync' },
   );
 
-  const categories = ref([]);
+  const categories = ref<Category[]>([]);
 
-  const games = ref([]);
+  const games = ref<Game[]>([]);
 
-  const sessions = ref([]);
+  const sessions = ref<Session[]>([]);
 
-  const active = ref([]);
+  const active = ref<Session[]>([]);
 
-  const selected = ref([]);
+  const selected = ref<string[]>([]);
 
   const now = ref(Date.now());
 
@@ -57,7 +62,10 @@ export function useWorkspace() {
     activityBuckets(sessions.value, categories.value, date.value, view.value, now.value),
   );
 
-  const range = computed(() => [dayBounds(days.value[0])[0], dayBounds(days.value.at(-1))[1]]);
+  const range = computed<[number, number]>(() => [
+    dayBounds(days.value[0] ?? date.value)[0],
+    dayBounds(days.value.at(-1) ?? date.value)[1],
+  ]);
 
   const stats = computed(() => summarize(sessions.value, categories.value, ...range.value, now.value));
 
@@ -120,15 +128,15 @@ export function useWorkspace() {
       72,
   );
 
-  function category(id) {
+  function category(id: string) {
     return categoryMap.value[id] || { name: 'Категория', color: '#8e77ff', group_name: '' };
   }
 
-  function gameName(id) {
+  function gameName(id?: string | null) {
     return games.value.find((g) => g.id === id)?.name || '';
   }
 
-  function flash(message) {
+  function flash(message: string) {
     notice.value = message;
     clearTimeout(noticeTimer);
     noticeTimer = setTimeout(() => {
@@ -140,8 +148,8 @@ export function useWorkspace() {
     const version = ++requestVersion;
     try {
       const [bootstrap, rows] = await Promise.all([
-        api('/bootstrap'),
-        api(`/sessions?from=${range.value[0]}&to=${range.value[1]}`),
+        readApi('/bootstrap', bootstrapSchema),
+        readApi(`/sessions?from=${range.value[0]}&to=${range.value[1]}`, sessionSchema.array()),
       ]);
       if (version !== requestVersion) return;
       categories.value = bootstrap.categories;
@@ -151,13 +159,13 @@ export function useWorkspace() {
       selected.value = selected.value.filter((id) => !activeIds.value.has(id) && categoryMap.value[id]);
       error.value = '';
     } catch (e) {
-      error.value = e.message;
+      error.value = errorMessage(e);
     } finally {
       if (version === requestVersion) loading.value = false;
     }
   }
 
-  function toggle(id) {
+  function toggle(id: string) {
     selected.value = selected.value.includes(id)
       ? selected.value.filter((x) => x !== id)
       : [...selected.value, id];
@@ -167,7 +175,7 @@ export function useWorkspace() {
     return action(() => api('/sessions', 'POST', { category_ids: selected.value }), 'Таймеры запущены');
   }
 
-  function stop(s) {
+  function stop(s: Session) {
     return action(
       () => api(`/sessions/${s.id}`, 'PATCH', { end_at: Math.max(Date.now(), s.start_at + 1) }),
       'Время сохранено. Добавь заметку в записи.',
@@ -182,22 +190,22 @@ export function useWorkspace() {
     }, 'Все таймеры остановлены');
   }
 
-  async function navigate(id) {
+  async function navigate(id: string) {
     page.value = id;
     await load();
   }
 
-  async function changeView(value) {
+  async function changeView(value: string) {
     view.value = value;
     await load();
   }
 
-  async function changeDate(value) {
+  async function changeDate(value: string) {
     date.value = value || localDate();
     await load();
   }
 
-  function step(amount) {
+  function step(amount: number) {
     if (view.value === 'month') {
       const d = new Date(`${date.value.slice(0, 7)}-01T12:00:00`);
       d.setMonth(d.getMonth() + amount);
@@ -206,7 +214,7 @@ export function useWorkspace() {
     return changeDate(shiftDate(date.value, amount * (view.value === 'week' ? 7 : 1)));
   }
 
-  function eventStyle(s) {
+  function eventStyle(s: Session & { start: number; end: number; lane: number; lanes: number }) {
     const rect = timelineRect(s.start, s.end, dayBounds(date.value)[0] + timelineStart.value * 3600000);
     return {
       top: `${rect.top}px`,
@@ -217,11 +225,11 @@ export function useWorkspace() {
     };
   }
 
-  function dayOpen(d) {
+  function dayOpen(d: string) {
     date.value = d;
     view.value = 'day';
     page.value = 'dashboard';
-    load();
+    void load();
   }
 
   const categoryMap = computed(() => Object.fromEntries(categories.value.map((c) => [c.id, c])));
@@ -236,7 +244,7 @@ export function useWorkspace() {
     ),
   );
 
-  async function action(fn, message) {
+  async function action(fn: () => Promise<unknown>, message: string) {
     if (busy.value) return;
     busy.value = true;
     try {
@@ -244,17 +252,19 @@ export function useWorkspace() {
       await load();
       if (message) flash(message);
     } catch (e) {
-      error.value = e.message;
+      error.value = errorMessage(e);
     } finally {
       busy.value = false;
     }
   }
   onMounted(() => {
-    load();
+    void load();
     tick = setInterval(() => {
       now.value = Date.now();
     }, 1000);
-    refreshTimer = setInterval(load, 30000);
+    refreshTimer = setInterval(() => {
+      void load();
+    }, 30000);
   });
   onUnmounted(() => {
     clearInterval(tick);
@@ -309,3 +319,6 @@ export function useWorkspace() {
     dayOpen,
   };
 }
+
+export type WorkspaceModel = ReturnType<typeof useWorkspace>;
+export type WorkspaceView = UnwrapNestedRefs<WorkspaceModel>;

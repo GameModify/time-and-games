@@ -1,3 +1,12 @@
+import { z } from 'zod';
+import type { ZodType } from 'zod';
+import {
+  bootstrapSchema,
+  backupSchema,
+  sessionSchema,
+  gameSchema,
+  backupCategorySchema,
+} from '../src/shared/api/contracts.ts';
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -6,19 +15,21 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { once } from 'node:events';
 
-let child, base, directory;
+let child: ReturnType<typeof spawn>, base: string, directory: string;
 async function launch() {
-  child = spawn(process.execPath, ['server/index.mjs'], {
+  child = spawn(process.execPath, ['server/index.ts'], {
     env: { ...process.env, TNG_PORT: '0', TNG_DATA_DIR: directory },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
-  base = await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('API startup timeout')), 10000);
+  base = await new Promise<string>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error('API startup timeout'));
+    }, 10000);
     let output = '';
-    child.stderr.on('data', (chunk) => {
-      output += chunk;
+    child.stderr?.on('data', (chunk: Buffer) => {
+      output += chunk.toString();
     });
-    child.stdout.on('data', (chunk) => {
+    child.stdout?.on('data', (chunk: Buffer) => {
       const match = chunk.toString().match(/http:\/\/127\.0\.0\.1:\d+/);
       if (match) {
         clearTimeout(timeout);
@@ -27,26 +38,42 @@ async function launch() {
     });
     child.once('exit', (code) => {
       clearTimeout(timeout);
-      reject(new Error(`API exited ${code}: ${output}`));
+      reject(new Error(`API exited ${String(code)}: ${output}`));
     });
     child.once('error', reject);
   });
 }
 async function shutdown() {
-  if (child && child.exitCode === null) {
+  if (child.exitCode === null) {
     const exited = once(child, 'exit');
     child.kill();
     await exited;
   }
 }
-async function call(route, method = 'GET', body, headers = {}) {
+async function call(
+  route: string,
+  method = 'GET',
+  body?: unknown,
+  headers: Record<string, string> = {},
+) {
   const res = await fetch(base + '/api' + route, {
     method,
     headers: { 'Content-Type': 'application/json', ...headers },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
-  return { status: res.status, data: await res.json() };
+  return { status: res.status, data: (await res.json()) as unknown };
 }
+async function read<T>(schema: ZodType<T>, route: string, method = 'GET', body?: unknown) {
+  const result = await call(route, method, body);
+  return { ...result, data: schema.parse(result.data) };
+}
+
+function required<T>(value: T | undefined): T {
+  assert.notEqual(value, undefined);
+  if (value === undefined) throw new Error('Missing test fixture');
+  return value;
+}
+
 before(async () => {
   directory = await mkdtemp(path.join(tmpdir(), 'time-and-games-test-'));
   await launch();
@@ -56,8 +83,8 @@ after(async () => {
   if (directory) await rm(directory, { recursive: true, force: true });
 });
 
-test('local API rejects cross-origin writes and invalid input', async () => {
-  assert.equal((await call('/health')).data.ok, true);
+void test('local API rejects cross-origin writes and invalid input', async () => {
+  assert.equal((await read(z.object({ ok: z.boolean() }), '/health')).data.ok, true);
   assert.equal((await call('/sessions', 'POST', {}, { Origin: 'https://example.com' })).status, 403);
   assert.equal((await call('/sessions', 'POST', { category_ids: ['missing'] })).status, 400);
   assert.equal(
@@ -79,8 +106,22 @@ test('local API rejects cross-origin writes and invalid input', async () => {
   );
 });
 
-test('parallel timers survive restart and cannot be duplicated by editing', async () => {
-  const started = await call('/sessions', 'POST', {
+void test('typed API rejects malformed JSON fields without changing stored data', async () => {
+  const before = (await read(backupSchema, '/export')).data;
+  for (const [route, body] of [
+    ['/sessions', { category_ids: [1] }],
+    ['/sessions', { category_id: 'work-code', title: { unexpected: true } }],
+    ['/categories', { name: 'Invalid', group_name: 'Invalid', is_work: 'false' }],
+    ['/games', { name: 'Invalid', playtime_minutes: 'many' }],
+    ['/import-backup', { ...before, sessions: [{ start_at: 'invalid' }] }],
+  ] as const)
+    assert.equal((await call(route, 'POST', body)).status, 400);
+  assert.deepEqual((await read(backupSchema, '/export')).data.sessions, before.sessions);
+  assert.deepEqual((await read(bootstrapSchema, '/bootstrap')).data.active, []);
+});
+
+void test('parallel timers survive restart and cannot be duplicated by editing', async () => {
+  const started = await read(sessionSchema.array(), '/sessions', 'POST', {
     category_ids: ['work-code', 'fun-video'],
     start_at: Date.now() - 100000,
     note: 'Parallel',
@@ -89,17 +130,19 @@ test('parallel timers survive restart and cannot be duplicated by editing', asyn
   assert.equal(started.data.length, 2);
   assert.equal((await call('/sessions', 'POST', { category_id: 'work-code' })).status, 409);
   const [a, b] = started.data;
+  assert.ok(a);
+  assert.ok(b);
   assert.equal((await call(`/sessions/${b.id}`, 'PATCH', { category_id: 'work-code' })).status, 409);
   await shutdown();
   await launch();
-  assert.equal((await call('/bootstrap')).data.active.length, 2);
+  assert.equal((await read(bootstrapSchema, '/bootstrap')).data.active.length, 2);
   assert.equal((await call(`/sessions/${a.id}`, 'PATCH', { end_at: Date.now() })).status, 200);
-  assert.equal((await call('/bootstrap')).data.active.length, 1);
+  assert.equal((await read(bootstrapSchema, '/bootstrap')).data.active.length, 1);
   await call(`/sessions/${b.id}`, 'PATCH', { end_at: Date.now() });
 });
 
-test('game editing, linked sessions, backup roundtrip and rollback preserve data', async () => {
-  const created = await call('/games', 'POST', {
+void test('game editing, linked sessions, backup roundtrip and rollback preserve data', async () => {
+  const created = await read(z.object({ game: gameSchema, created: z.boolean() }), '/games', 'POST', {
     name: 'A game',
     steam_appid: 999999,
     status: 'completed',
@@ -114,32 +157,32 @@ test('game editing, linked sessions, backup roundtrip and rollback preserve data
     200,
   );
   assert.equal((await call(`/games/${game.id}`, 'PATCH', { started_at: '2026-10-23' })).status, 400);
-  const session = await call('/sessions', 'POST', {
+  const session = await read(sessionSchema.array(), '/sessions', 'POST', {
     category_id: 'fun-games',
     game_id: game.id,
     start_at: 1000,
     end_at: 2000,
   });
   assert.equal(session.status, 201);
-  const backup = (await call('/export')).data;
+  const backup = (await read(backupSchema, '/export')).data;
   const broken = structuredClone(backup);
-  broken.sessions[0].category_id = 'missing';
+  required(broken.sessions[0]).category_id = 'missing';
   assert.equal((await call('/import-backup', 'POST', broken)).status, 400);
-  assert.deepEqual((await call('/export')).data.sessions, backup.sessions);
+  assert.deepEqual((await read(backupSchema, '/export')).data.sessions, backup.sessions);
   await call(`/games/${game.id}`, 'DELETE');
-  const rows = (await call('/sessions?from=1&to=3000')).data;
-  assert.equal(rows.find((s) => s.id === session.data[0].id).game_id, null);
+  const rows = (await read(sessionSchema.array(), '/sessions?from=1&to=3000')).data;
+  assert.equal(rows.find((s) => s.id === required(session.data[0]).id)?.game_id, null);
   assert.equal((await call('/import-backup', 'POST', backup)).status, 200);
-  assert.equal((await call('/games')).data[0].rating, 9);
+  assert.equal((await read(gameSchema.array(), '/games')).data[0]?.rating, 9);
   const duplicate = structuredClone(backup);
-  duplicate.games.push({ ...duplicate.games[0], id: 'duplicate-id' });
+  duplicate.games.push({ ...required(duplicate.games[0]), id: 'duplicate-id' });
   assert.equal((await call('/import-backup', 'POST', duplicate)).status, 400);
-  assert.equal((await call('/games')).data.length, 1);
+  assert.equal((await read(gameSchema.array(), '/games')).data.length, 1);
 });
 
-test('categories with sessions cannot be deleted', async () => {
+void test('categories with sessions cannot be deleted', async () => {
   assert.equal((await call('/categories/work-code', 'DELETE')).status, 409);
-  const c = await call('/categories', 'POST', {
+  const c = await read(backupCategorySchema, '/categories', 'POST', {
     group_name: 'Быт',
     name: 'Тестовая',
     color: '#abcdef',
@@ -150,19 +193,19 @@ test('categories with sessions cannot be deleted', async () => {
   assert.equal((await call(`/categories/${c.data.id}`, 'DELETE')).status, 200);
 });
 
-test('reset requires explicit confirmation, clears records and games, and restores default categories', async () => {
-  const before = (await call('/export')).data;
+void test('reset requires explicit confirmation, clears records and games, and restores default categories', async () => {
+  const before = (await read(backupSchema, '/export')).data;
   assert.equal((await call('/reset', 'POST', {})).status, 400);
-  assert.deepEqual((await call('/export')).data.sessions, before.sessions);
+  assert.deepEqual((await read(backupSchema, '/export')).data.sessions, before.sessions);
   await call('/categories', 'POST', { name: 'Custom', group_name: 'Custom' });
   await call('/sessions', 'POST', { category_id: 'work-code' });
   assert.equal((await call('/reset', 'POST', { confirmation: 'СБРОСИТЬ' })).status, 200);
-  const bootstrap = (await call('/bootstrap')).data;
+  const bootstrap = (await read(bootstrapSchema, '/bootstrap')).data;
   assert.equal(bootstrap.games.length, 0);
   assert.equal(bootstrap.active.length, 0);
   assert.equal(bootstrap.categories.length, 10);
-  assert.equal((await call('/export')).data.sessions.length, 0);
+  assert.equal((await read(backupSchema, '/export')).data.sessions.length, 0);
   await shutdown();
   await launch();
-  assert.equal((await call('/bootstrap')).data.categories.length, 10);
+  assert.equal((await read(bootstrapSchema, '/bootstrap')).data.categories.length, 10);
 });
