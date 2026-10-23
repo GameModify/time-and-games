@@ -374,11 +374,11 @@ const donutGradient = computed(() => {
           <small>{{ d.count ? `${d.count} сессий` : 'Нет записей' }}</small>
         </button>
       </div>
-      <section
+      <details
         v-if="page === 'dashboard' && view === 'day' && display === 'timeline' && daySessions.length"
         class="day-details"
       >
-        <h3>Записи и результаты · {{ daySessions.length }}</h3>
+        <summary>Записи и результаты · {{ daySessions.length }}</summary>
         <button v-for="s in daySessions" :key="s.id" class="detail-record" @click="editSession(s)">
           <strong :style="{ color: category(s.category_id).color }">{{
             s.title || category(s.category_id).name
@@ -390,7 +390,7 @@ const donutGradient = computed(() => {
           <span v-if="s.game_id" class="session-game">{{ gameName(s.game_id) }}</span>
           <p>{{ s.note || 'Без заметки' }}</p>
         </button>
-      </section>
+      </details>
       <div class="panel-footer">
         <span
           ><span class="legend-dot purple-bg" />{{
