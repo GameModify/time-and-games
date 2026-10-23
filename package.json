@@ -1,0 +1,31 @@
+{
+  "name": "time-and-games",
+  "version": "0.1.0",
+  "private": true,
+  "engines": { "node": ">=24" },
+  "type": "module",
+  "description": "Локальный игровой трекер времени и пройденных игр",
+  "scripts": {
+    "dev": "concurrently -k -n API,WEB -c cyan,magenta \"node server/index.mjs\" \"vite --host 127.0.0.1\"",
+    "build": "vite build",
+    "start": "node server/index.mjs",
+    "check": "node scripts/check-architecture.mjs && eslint src server tests scripts vite.config.js && prettier --check \"src/**/*.{vue,js,css}\" \"server/**/*.mjs\" \"tests/**/*.mjs\" \"scripts/**/*.mjs\" vite.config.js",
+    "format": "prettier --write \"src/**/*.{vue,js,css}\" \"server/**/*.mjs\" \"tests/**/*.mjs\" \"scripts/**/*.mjs\" vite.config.js",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "lucide-vue-next": "^0.468.0",
+    "vue": "^3.5.18"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.35.0",
+    "@vitejs/plugin-vue": "^6.0.2",
+    "concurrently": "^9.2.0",
+    "eslint": "^9.35.0",
+    "eslint-plugin-vue": "^10.5.1",
+    "globals": "^16.4.0",
+    "prettier": "^3.6.2",
+    "vite": "^7.1.0"
+  }
+}

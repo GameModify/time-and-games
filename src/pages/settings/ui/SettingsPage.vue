@@ -1,0 +1,130 @@
+<script setup>
+import { toRefs } from 'vue';
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Check,
+  Gamepad2,
+  Layers,
+  Moon,
+  Pencil,
+  Plus,
+  ShieldCheck,
+  Sun,
+  Trash2,
+} from 'lucide-vue-next';
+import { activityIcons as icons } from '../../../entities/activity/index.js';
+const props = defineProps({
+  categories: { type: Array, required: true },
+  groupNames: { type: Array, required: true },
+  editor: { type: Object, required: true },
+  appearance: { type: Object, required: true },
+});
+const { categories, groupNames } = toRefs(props);
+const { theme, setTheme } = toRefs(props.appearance);
+const { editCategory, remove, readBackup, open } = toRefs(props.editor);
+</script>
+<template>
+  <section class="panel settings-panel appearance-panel">
+    <div class="section-heading">
+      <div>
+        <h2>Оформление</h2>
+        <p class="muted">Выбери тему, в которой тебе комфортно. Выбор сохранится в этом браузере.</p>
+      </div>
+    </div>
+    <div class="theme-options" role="group" aria-label="Тема оформления">
+      <button
+        :class="['theme-option', { selected: theme === 'dark' }]"
+        :aria-pressed="theme === 'dark'"
+        @click="setTheme('dark')"
+      >
+        <Moon :size="21" /><span>Тёмная<small>Для вечернего фокуса</small></span
+        ><Check v-if="theme === 'dark'" :size="18" /></button
+      ><button
+        :class="['theme-option', { selected: theme === 'light' }]"
+        :aria-pressed="theme === 'light'"
+        @click="setTheme('light')"
+      >
+        <Sun :size="21" /><span>Светлая<small>Больше воздуха и света</small></span
+        ><Check v-if="theme === 'light'" :size="18" />
+      </button>
+    </div>
+  </section>
+  <section class="panel settings-panel">
+    <div class="section-heading">
+      <div>
+        <h2>Твои категории</h2>
+        <p class="muted">Группируй занятия и выбирай, что считать работой.</p>
+      </div>
+      <button class="button secondary" @click="editCategory()"><Plus :size="16" />Категория</button>
+    </div>
+    <div v-for="group in groupNames" :key="group" class="category-group">
+      <h3>{{ group }}</h3>
+      <div
+        v-for="c in categories.filter((c) => c.group_name === group)"
+        :key="c.id"
+        class="category-setting"
+      >
+        <span class="category-symbol" :style="{ color: c.color, background: `${c.color}18` }"
+          ><component :is="icons[c.icon] || Layers" :size="18" /></span
+        ><strong>{{ c.name }}</strong
+        ><span v-if="c.is_work" class="work-badge">Работа</span
+        ><button class="icon-button" :aria-label="`Изменить ${c.name}`" @click="editCategory(c)">
+          <Pencil :size="16" /></button
+        ><button
+          class="icon-button danger"
+          :aria-label="`Удалить ${c.name}`"
+          @click="remove('categories', c)"
+        >
+          <Trash2 :size="16" />
+        </button>
+      </div>
+    </div>
+  </section>
+  <section class="panel settings-panel">
+    <div class="section-heading">
+      <div>
+        <h2>Данные под твоим контролем</h2>
+        <p class="muted">Всё хранится локально в SQLite. Сохраняй резервные копии.</p>
+      </div>
+      <ShieldCheck :size="24" class="green-text" />
+    </div>
+    <div class="backup-actions">
+      <a class="button secondary" href="/api/export" download
+        ><ArrowDownToLine :size="17" />Экспорт JSON</a
+      ><label class="button secondary file-button"
+        ><ArrowUpFromLine :size="17" />Восстановить из файла<input
+          type="file"
+          accept=".json,application/json"
+          @change="readBackup"
+      /></label>
+    </div>
+    <p class="subtle-note">Восстановление заменяет текущие записи. Перед ним сохрани экспорт.</p>
+  </section>
+  <section class="panel settings-panel">
+    <div class="section-heading">
+      <div>
+        <h2>Сброс данных</h2>
+        <p class="muted">
+          Удалить все записи времени, игры и свои категории. Стандартные категории появятся заново.
+        </p>
+      </div>
+    </div>
+    <div class="backup-actions">
+      <button class="button danger-button" @click="open('reset', { confirmation: '' })">
+        <Trash2 :size="17" />Сбросить данные
+      </button>
+    </div>
+    <p class="subtle-note">
+      Перед сбросом сохрани резервную копию. Отменить сброс можно только восстановлением из файла.
+    </p>
+  </section>
+  <section class="panel settings-panel about-panel">
+    <span class="brand-icon"><Gamepad2 :size="25" /></span>
+    <div>
+      <h2>Время и игры <span class="muted">v0.1.0</span></h2>
+      <p class="muted">Vue 3 · SQLite · Твоё личное пространство</p>
+      <p class="subtle-note">ИИ и голосовой ввод - следующий этап.</p>
+    </div>
+  </section>
+</template>
