@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { mediaSchema, personalRatingSchema } from './mediaContracts.ts';
 
 export const gameStatusSchema = z.enum(['backlog', 'playing', 'completed', 'paused', 'dropped']);
 export const categorySchema = z.object({
@@ -16,7 +17,11 @@ export const gameSchema = z.object({
   name: z.string(),
   poster: z.string(),
   status: gameStatusSchema,
-  rating: z.number().nullable(),
+  favorite: z
+    .union([z.boolean(), z.literal(0), z.literal(1)])
+    .transform(Boolean)
+    .default(false),
+  rating: personalRatingSchema,
   review: z.string(),
   started_at: z.string().nullable(),
   completed_at: z.string().nullable(),
@@ -39,17 +44,19 @@ export const bootstrapSchema = z.object({
   categories: categorySchema.array(),
   games: gameSchema.array(),
   active: sessionSchema.array(),
+  media: mediaSchema.array().default([]),
 });
 export const backupCategorySchema = categorySchema.extend({
   is_work: z.union([z.boolean(), z.literal(0), z.literal(1)]),
 });
 export const backupSchema = z.object({
   format: z.literal('time-and-games-backup'),
-  version: z.literal(1),
+  version: z.union([z.literal(1), z.literal(2)]),
   exported_at: z.string(),
   categories: backupCategorySchema.array(),
   games: gameSchema.array(),
   sessions: sessionSchema.array(),
+  media: mediaSchema.array().default([]),
 });
 export const steamResultSchema = z.object({
   appid: z.number(),

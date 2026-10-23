@@ -3,10 +3,13 @@ import type { EditorView } from '../model/useRecordEditor.ts';
 
 import { toRefs } from 'vue';
 
-import { ArrowDownToLine, Gamepad2, LoaderCircle, Plus, Search, Trash2, X } from 'lucide-vue-next';
+import { ArrowDownToLine, Gamepad2, LoaderCircle, Plus, Trash2, X } from 'lucide-vue-next';
+import RatingInput from '../../../shared/ui/RatingInput.vue';
+import SearchField from '../../../shared/ui/SearchField.vue';
+import CheckboxField from '../../../shared/ui/CheckboxField.vue';
 import { duration } from '../../../shared/lib/date.ts';
 import { statuses } from '../../../entities/game/index.ts';
-import { createBackdropDismiss } from '../lib/backdrop.ts';
+import { createBackdropDismiss } from '../../../shared/lib/backdrop.ts';
 const props = defineProps<{ editor: EditorView }>();
 const {
   modal,
@@ -164,14 +167,12 @@ const backdrop = createBackdropDismiss(() => {
             placeholder="Во что будем играть?"
         /></label>
         <div v-if="!form.id" class="steam-search">
-          <div class="search-field">
-            <Search :size="16" /><input
-              v-model="steamQuery"
-              placeholder="Найти постер в Steam…"
-              aria-label="Поиск в Steam"
-              @keydown.enter.prevent="steamSearch"
-            />
-          </div>
+          <SearchField
+            v-model="steamQuery"
+            label="Поиск в Steam"
+            placeholder="Найти постер в Steam…"
+            @search="steamSearch"
+          />
           <button
             type="button"
             class="button secondary"
@@ -205,13 +206,9 @@ const backdrop = createBackdropDismiss(() => {
             >Статус<select v-model="form.status">
               <option v-for="(label, id) in statuses" :key="id" :value="id">{{ label }}</option>
             </select></label
-          ><label
-            >Оценка<select v-model="form.rating">
-              <option :value="null">Пока без оценки</option>
-              <option v-for="n in 10" :key="n" :value="n">{{ n }} / 10</option>
-            </select></label
           >
         </div>
+        <RatingInput v-model="form.rating" />
         <label
           >Постер - ссылка HTTPS<input v-model="form.poster" type="url" placeholder="https://…"
         /></label>
@@ -278,10 +275,8 @@ const backdrop = createBackdropDismiss(() => {
             id="groups"
           >
             <option v-for="g in groupNames" :key="g" :value="g" /></datalist></label
-        ><label>Цвет<input v-model="form.color" type="color" /></label
-        ><label class="checkbox-label"
-          ><input v-model="form.is_work" type="checkbox" />Учитывать как работу</label
-        >
+        ><label>Цвет<input v-model="form.color" type="color" /></label>
+        <CheckboxField v-model="form.is_work" label="Учитывать как работу" />
         <div class="modal-actions">
           <button type="button" class="button secondary" :disabled="saving" @click="close">Отмена</button
           ><button class="button primary" :disabled="saving">Сохранить</button>
@@ -352,7 +347,8 @@ const backdrop = createBackdropDismiss(() => {
       <div v-else-if="modal === 'backup'" class="modal-form">
         <p>
           Будут восстановлены {{ form.data.categories.length }} категорий,
-          {{ form.data.games.length }} игр и {{ form.data.sessions.length }} записей.
+          {{ form.data.games.length }} игр, {{ form.data.media.length }} фильмов и сериалов и
+          {{ form.data.sessions.length }} записей.
         </p>
         <p class="alert error">Текущие данные будут заменены. Сначала скачай резервную копию.</p>
         <a class="button secondary" href="/api/export" download

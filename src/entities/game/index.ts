@@ -5,4 +5,10 @@ export const statuses = {
   paused: 'На паузе',
   dropped: 'Брошена',
 };
-export { playtimeFields, playtimeMinutes, gameMinutes, completedInPeriod } from './lib/library.ts';
+export {
+  playtimeFields,
+  playtimeMinutes,
+  gameMinutes,
+  completedInPeriod,
+  gamePeriodDate,
+} from './lib/library.ts';

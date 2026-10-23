@@ -26,6 +26,7 @@ import { duration, localDate } from '../../../shared/lib/date.ts';
 import { activityIcons as icons } from '../../../entities/activity/index.ts';
 import { statuses } from '../../../entities/game/index.ts';
 import PeriodChart from './PeriodChart.vue';
+import LibraryHistory from './LibraryHistory.vue';
 const props = defineProps<{ model: WorkspaceView; editor: EditorView }>();
 const {
   page,
@@ -60,6 +61,7 @@ const {
   navigate,
   changeView,
   changeDate,
+  changeDisplay,
   step,
   eventStyle,
   dayOpen,
@@ -236,13 +238,13 @@ const donutGradient = computed(() => {
           <button
             :class="['icon-button', { active: display === 'timeline' }]"
             aria-label="Временная шкала"
-            @click="display = 'timeline'"
+            @click="changeDisplay('timeline')"
           >
             <CalendarDays :size="16" /></button
           ><button
             :class="['icon-button', { active: display === 'list' }]"
             aria-label="Список записей"
-            @click="display = 'list'"
+            @click="changeDisplay('list')"
           >
             <List :size="17" />
           </button>
@@ -473,4 +475,5 @@ const donutGradient = computed(() => {
       </div>
     </aside>
   </div>
+  <LibraryHistory v-if="page === 'analytics'" :games="model.games" :media="model.media" />
 </template>

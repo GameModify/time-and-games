@@ -5,7 +5,7 @@ import { summarize, activityBuckets, timelineLayout } from '../src/entities/acti
 import { dayBounds } from '../src/shared/lib/date.ts';
 import { playtimeFields, playtimeMinutes, completedInPeriod } from '../src/entities/game/lib/library.ts';
 import { withGameTimes } from '../server/game-time.ts';
-import { createBackdropDismiss } from '../src/features/record-editor/lib/backdrop.ts';
+import { createBackdropDismiss } from '../src/shared/lib/backdrop.ts';
 
 void test('finished records retain their full duration even when end is later than now', () => {
   const start = +new Date('2026-10-23T02:56:00'),
@@ -56,25 +56,28 @@ void test('game totals merge linked parallel sessions and avoid counting Steam t
   assert.equal(game.total_minutes, 200);
   assert.equal(withGameTimes([{ id: 'a', playtime_minutes: 100 }], sessions)[0]?.total_minutes, 180);
 });
+function clickBackdrop(guard: ReturnType<typeof createBackdropDismiss>, backdrop: EventTarget) {
+  guard.down({ button: 0, target: backdrop, currentTarget: backdrop });
+  guard.up({ button: 0, target: backdrop, currentTarget: backdrop });
+}
 void test('releasing a text-selection drag outside does not dismiss the form', () => {
   let dismissed = 0;
-  const backdrop = new EventTarget(),
-    inside = new EventTarget();
+  const backdrop = new EventTarget();
   let selection = '';
   const guard = createBackdropDismiss(
-    () => dismissed++,
+    () => {
+      dismissed++;
+    },
     () => selection,
   );
-  guard.down({ button: 0, target: inside, currentTarget: backdrop });
+  guard.down({ button: 0, target: new EventTarget(), currentTarget: backdrop });
   guard.up({ button: 0, target: backdrop, currentTarget: backdrop });
   assert.equal(dismissed, 0);
   selection = 'selected text';
-  guard.down({ button: 0, target: backdrop, currentTarget: backdrop });
-  guard.up({ button: 0, target: backdrop, currentTarget: backdrop });
+  clickBackdrop(guard, backdrop);
   assert.equal(dismissed, 0);
   selection = '';
-  guard.down({ button: 0, target: backdrop, currentTarget: backdrop });
-  guard.up({ button: 0, target: backdrop, currentTarget: backdrop });
+  clickBackdrop(guard, backdrop);
   assert.equal(dismissed, 1);
 });
 

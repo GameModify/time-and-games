@@ -10,9 +10,17 @@
   --muted: #999cb1;
   --subtle: #858a9f;
   --line: #2b2d3d;
+  --scroll-thumb: #585169;
+  --scroll-hover: #84749d;
+  --scroll-track: #14151f;
   --accent-text: #c2acf5;
   --accent-surface: #292238;
   --purple: #a591ff;
+  --rating: #e7b757;
+  --rating-neutral: #d1d4df;
+  --rating-low: #f58b96;
+  --success-text: #70d4b1;
+  --success-surface: #18382d;
 }
 [data-theme='light'] .timeline-event.short-record {
   border: 0;
@@ -31,9 +39,17 @@
   --muted: #626779;
   --subtle: #70758a;
   --line: #dfe1eb;
+  --scroll-thumb: #b7acc9;
+  --scroll-hover: #8c78aa;
+  --scroll-track: #f3f4f8;
   --accent-text: #7250aa;
   --accent-surface: #eee7f9;
   --purple: #7951c3;
+  --rating: #9b6a12;
+  --rating-neutral: #606577;
+  --rating-low: #b7394c;
+  --success-text: #217456;
+  --success-surface: #e2f3eb;
 }
 
 [data-theme='light'] .stat-card {

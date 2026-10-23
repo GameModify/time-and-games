@@ -3,6 +3,7 @@ import js from '@eslint/js';
 import pluginVue from 'eslint-plugin-vue';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+import sonarjs from 'eslint-plugin-sonarjs';
 
 export default defineConfig(
   { ignores: ['dist/**', 'node_modules/**', 'data/**', '.qa/**', '.npm-cache/**'] },
@@ -11,6 +12,7 @@ export default defineConfig(
   ...pluginVue.configs['flat/recommended'],
   {
     files: ['**/*.{ts,vue}'],
+    plugins: { sonarjs },
     languageOptions: {
       globals: { ...globals.browser, ...globals.node },
       parserOptions: {
@@ -21,6 +23,8 @@ export default defineConfig(
       },
     },
     rules: {
+      'max-lines-per-function': ['error', { max: 20, IIFEs: true }],
+      'sonarjs/cognitive-complexity': ['error', 20],
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
@@ -29,6 +33,26 @@ export default defineConfig(
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
       '@typescript-eslint/switch-exhaustiveness-check': 'error',
+    },
+  },
+  {
+    files: ['src/**/*.{ts,vue}', 'server/**/*.ts'],
+    ignores: [
+      'src/shared/api/**',
+      'server/index.ts',
+      'server/media.ts',
+      'server/storage.ts',
+      'server/backup.ts',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "MemberExpression[object.name='JSON'][property.name=/^(parse|stringify)$/]",
+          message:
+            'Разбирай и сериализуй JSON только в адаптерах HTTP, SQLite и резервных копий. Между модулями передавай типизированные модели или DTO.',
+        },
+      ],
     },
   },
   {

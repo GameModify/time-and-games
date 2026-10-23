@@ -3,15 +3,26 @@ import type { Game } from '../../../shared/api/contracts.ts';
 import type { EditorView } from '../../../features/record-editor/index.ts';
 
 import { toRefs } from 'vue';
-import { Gamepad2, Pencil, Plus, Search, Star, Clock3, Trophy, Library, Play } from 'lucide-vue-next';
+import { Gamepad2, Pencil, Plus, Clock3, Trophy, Library, Play } from 'lucide-vue-next';
+import RatingBadge from '../../../shared/ui/RatingBadge.vue';
+import SearchField from '../../../shared/ui/SearchField.vue';
+import FavoriteButton from '../../../shared/ui/FavoriteButton.vue';
+import FavoriteFilter from '../../../shared/ui/FavoriteFilter.vue';
 import { shortDate, posterFailed } from '../../../shared/lib/format.ts';
 import { statuses, gameMinutes } from '../../../entities/game/index.ts';
 import { duration } from '../../../shared/lib/date.ts';
 import { useGameLibrary } from '../model/useGameLibrary.ts';
-const props = defineProps<{ games: Game[]; editor: EditorView }>();
+const props = defineProps<{
+  games: Game[];
+  editor: EditorView;
+  toggleFavorite: (game: Game) => Promise<void>;
+  busy: boolean;
+}>();
 const { games } = toRefs(props);
 const {
   search,
+  favoritesOnly,
+  periodLabel,
   statusFilter,
   completionPeriod,
   completedYears,
@@ -84,19 +95,13 @@ const { importReport, open, editGame } = toRefs(props.editor);
         {{ label }} <span>{{ games.filter((g) => g.status === id).length }}</span>
       </button>
     </div>
-    <label class="search-field"
-      ><Search :size="17" /><input
-        v-model="search"
-        placeholder="Найти в коллекции…"
-        aria-label="Поиск в коллекции"
-    /></label>
+    <SearchField v-model="search" label="Поиск в коллекции" placeholder="Найти в коллекции…" />
   </div>
   <div class="library-period">
+    <FavoriteFilter v-model="favoritesOnly" :count="games.filter((g) => g.favorite).length" />
     <label
-      >Когда пройдены<select
-        :value="completionPeriod"
-        @change="setPeriod(($event.target as HTMLInputElement).value)"
-      >
+      >{{ periodLabel
+      }}<select :value="completionPeriod" @change="setPeriod(($event.target as HTMLInputElement).value)">
         <option value="all">За всё время</option>
         <option value="month">В этом месяце</option>
         <option value="last-month">В прошлом месяце</option>
@@ -106,7 +111,7 @@ const { importReport, open, editGame } = toRefs(props.editor);
         <option v-for="year in completedYears" :key="year" :value="`year:${year}`">
           За {{ year }} год
         </option>
-        <option value="undated">Без даты прохождения</option>
+        <option value="undated">Без даты</option>
       </select></label
     >
     <p>
@@ -129,33 +134,43 @@ const { importReport, open, editGame } = toRefs(props.editor);
     </button>
   </div>
   <div class="games-grid">
-    <button v-for="g in filteredGames" :key="g.id" class="game-card" @click="editGame(g)">
-      <div class="game-poster">
-        <div class="poster-fallback">
-          <Gamepad2 :size="45" /><span>{{ g.name }}</span>
+    <article v-for="g in filteredGames" :key="g.id" class="game-card">
+      <button class="game-open" @click="editGame(g)">
+        <div class="game-poster">
+          <div class="poster-fallback">
+            <Gamepad2 :size="45" /><span>{{ g.name }}</span>
+          </div>
+          <img v-if="g.poster" :src="g.poster" :alt="g.name" loading="lazy" @error="posterFailed" /><span
+            :class="['game-status', g.status]"
+            >{{ statuses[g.status] }}</span
+          ><RatingBadge v-if="g.rating !== null" class="game-rating" :value="g.rating" /><span
+            class="poster-edit"
+            ><Pencil :size="16"
+          /></span>
         </div>
-        <img v-if="g.poster" :src="g.poster" :alt="g.name" loading="lazy" @error="posterFailed" /><span
-          :class="['game-status', g.status]"
-          >{{ statuses[g.status] }}</span
-        ><span v-if="g.rating" class="game-rating"
-          ><Star :size="13" fill="currentColor" />{{ g.rating }}</span
-        ><span class="poster-edit"><Pencil :size="16" /></span>
-      </div>
-      <div class="game-info">
-        <h3>{{ g.name }}</h3>
-        <span class="game-playtime"
-          ><Clock3 :size="14" />{{
-            gameMinutes(g) ? duration(gameMinutes(g) * 60000) : 'Время не указано'
-          }}</span
-        >
-        <span>{{
-          g.completed_at
-            ? `Пройдена ${shortDate(g.completed_at)}`
-            : g.started_at
-              ? `Начата ${shortDate(g.started_at)}`
-              : 'Новая история ждёт'
-        }}</span>
-      </div>
-    </button>
+        <div class="game-info">
+          <h3>{{ g.name }}</h3>
+          <span class="game-playtime"
+            ><Clock3 :size="14" />{{
+              gameMinutes(g) ? duration(gameMinutes(g) * 60000) : 'Время не указано'
+            }}</span
+          >
+          <span>{{
+            g.completed_at
+              ? `Пройдена ${shortDate(g.completed_at)}`
+              : g.started_at
+                ? `Начата ${shortDate(g.started_at)}`
+                : 'Новая история ждёт'
+          }}</span>
+        </div>
+      </button>
+      <FavoriteButton
+        class="favorite-mark"
+        :active="g.favorite"
+        :name="g.name"
+        :disabled="busy"
+        @toggle="toggleFavorite(g)"
+      />
+    </article>
   </div>
 </template>

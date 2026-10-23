@@ -20,6 +20,7 @@
     "express": "^5.1.0",
     "lucide-vue-next": "^0.468.0",
     "vue": "^3.5.18",
+    "vue-router": "^5.4.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
@@ -29,6 +30,7 @@
     "@vitejs/plugin-vue": "^6.0.2",
     "concurrently": "^9.2.0",
     "eslint": "^9.35.0",
+    "eslint-plugin-sonarjs": "^4.2.2",
     "eslint-plugin-vue": "^10.5.1",
     "globals": "^16.4.0",
     "jiti": "^2.7.0",
