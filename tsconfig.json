@@ -23,6 +23,7 @@
     "server/**/*.ts",
     "scripts/**/*.ts",
     "tests/**/*.ts",
-    "*.config.ts"
+    "*.config.ts",
+    "skills/**/*.ts"
   ]
 }

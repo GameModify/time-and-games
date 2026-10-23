@@ -10,6 +10,7 @@ export default defineConfig(
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   ...pluginVue.configs['flat/recommended'],
+  { linterOptions: { noInlineConfig: true, reportUnusedDisableDirectives: 'error' } },
   {
     files: ['**/*.{ts,vue}'],
     plugins: { sonarjs },

@@ -102,10 +102,10 @@ node server/index.ts
 Работа ведётся в feature-ветках, затем PR в `main` со squash merge. Подробности — в [CONTRIBUTING.md](CONTRIBUTING.md). Полные проверки выполняются после законченной задачи, перед коммитом/PR:
 
 ```powershell
-node scripts/npm.ts run check
-node scripts/npm.ts run build
-node scripts/npm.ts test
+node scripts/npm.ts run verify
 ```
+
+Скилл [strict-typescript-architecture](skills/strict-typescript-architecture/SKILL.md) фиксирует правила типизации, функций до 20 строк, когнитивной сложности до 20 и архитектурных границ. `npm run quality:audit` проверяет эффективные настройки всех исходников, тестов и скриптов; `npm run verify` выполняет этот аудит и полный набор проверок.
 
 Тесты API создают отдельную временную SQLite-базу, проверяют перезапуск сервера, параллельные таймеры, валидацию, связи игр и атомарность восстановления. Тесты времени проверяют пересечения, границы суток, недели/месяцы и расположение параллельных сессий.
 
