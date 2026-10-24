@@ -1,3 +1,4 @@
+import { registerDashboardCards, readDashboardCards } from './dashboard-cards.ts';
 import { rangeSessions } from './tracking/live.ts';
 import { registerTimers } from './timers/routes.ts';
 import { timerDetails, pausedTimers } from './timers/storage.ts';
@@ -178,6 +179,7 @@ function importGames(games: GameInput[]) {
   }
 }
 
+registerDashboardCards(api, db);
 registerTimers(api, db);
 const mediaStore = registerMediaRoutes(api, db);
 const stopTracking = registerTracking(api, db);
@@ -185,6 +187,7 @@ const stopTracking = registerTracking(api, db);
 api.get('/api/health', (_req, res) => res.json({ ok: true, app: 'Time & Games', local: true }));
 api.get('/api/bootstrap', (_req, res) =>
   res.json({
+    dashboard_cards: readDashboardCards(db),
     categories: selectCategories(),
     games: selectGames(),
     active: selectActive(),

@@ -2,6 +2,7 @@ import type { UnwrapNestedRefs } from 'vue';
 import type { Media } from '../../../shared/api/mediaContracts.ts';
 import type {
   Bootstrap,
+  DashboardCards,
   Category,
   Game,
   Session,
@@ -18,7 +19,7 @@ import {
   isCalendarView,
 } from '../../../shared/lib/navigationState.ts';
 import type { NavigationState, CalendarDisplay } from '../../../shared/lib/navigationState.ts';
-import { bootstrapSchema, sessionSchema } from '../../../shared/api/contracts.ts';
+import { bootstrapSchema, sessionSchema, dashboardCardsSchema } from '../../../shared/api/contracts.ts';
 import { api, readApi } from '../../../shared/api/client.ts';
 import { dayBounds, localDate, periodDays, shiftDate } from '../../../shared/lib/date.ts';
 import {
@@ -65,6 +66,11 @@ class WorkspaceController {
   sessions = ref<Session[]>([]);
   active = ref<Timer[]>([]);
   paused = ref<PausedTimer[]>([]);
+  dashboardCards = ref<DashboardCards>({ category_ids: [] });
+  saveDashboardCards = async (cards: DashboardCards): Promise<void> => {
+    this.dashboardCards.value = await readApi('/dashboard-cards', dashboardCardsSchema, 'PATCH', cards);
+    await this.load();
+  };
   selected = ref<string[]>([]);
   timelineHours = ref<RecentTrackHours | null>(null);
   now = ref(Date.now());
@@ -170,6 +176,7 @@ class WorkspaceController {
     }, 5000);
   };
   applySnapshot = (bootstrap: Bootstrap, rows: Session[]) => {
+    this.dashboardCards.value = bootstrap.dashboard_cards;
     this.categories.value = bootstrap.categories;
     this.games.value = bootstrap.games;
     this.media.value = bootstrap.media;
@@ -340,6 +347,8 @@ type WorkspaceControllerView = Pick<
   | 'games'
   | 'media'
   | 'sessions'
+  | 'dashboardCards'
+  | 'saveDashboardCards'
   | 'timelineHours'
   | 'setTimelineHours'
   | 'active'

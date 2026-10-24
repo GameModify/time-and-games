@@ -8,7 +8,7 @@ import type {
   TrackingRulesWrite,
 } from './trackingContracts.ts';
 import type { ZodType } from 'zod';
-import type { Backup } from './contracts.ts';
+import type { Backup, DashboardCards } from './contracts.ts';
 import type { MediaInput } from './mediaContracts.ts';
 import type {
   SessionWriteDto,
@@ -17,6 +17,7 @@ import type {
   SettingsWriteDto,
 } from './inputContracts.ts';
 export type WriteDto =
+  | DashboardCards
   | Classification
   | SessionWriteDto
   | CategoryWriteDto

@@ -6,6 +6,7 @@ import { z } from 'zod';
 import type { ZodType } from 'zod';
 import {
   bootstrapSchema,
+  dashboardCardsSchema,
   backupSchema,
   sessionSchema,
   timerSchema,
@@ -422,4 +423,54 @@ void test('structured website and project metadata survives backup restoration a
     sessions.find((item) => item.id === backup.sessions[0]?.id)?.tracking_context,
     context,
   );
+});
+
+const chosenCards = { category_ids: ['fun-movies', 'fun-video'] };
+void test('dashboard cards preserve selection and order across API restart and backup restore', async () => {
+  assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data.category_ids, []);
+  assert.equal((await call('/dashboard-cards', 'PATCH', chosenCards)).status, 200);
+  assert.deepEqual((await read(bootstrapSchema, '/bootstrap')).data.dashboard_cards, chosenCards);
+  const backup = (await read(backupSchema, '/export')).data;
+  assert.deepEqual(backup.dashboard_cards, chosenCards);
+  await shutdown();
+  await launch();
+  assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data, chosenCards);
+  await call('/dashboard-cards', 'PATCH', { category_ids: [] });
+  assert.equal((await call('/import-backup', 'POST', backup)).status, 200);
+  assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data, chosenCards);
+});
+void test('invalid dashboard selections cannot overwrite the saved cards', async () => {
+  for (const category_ids of [
+    ['missing'],
+    ['fun-video', 'fun-video'],
+    [42],
+    Array.from({ length: 51 }, (_, index) => 'category-' + String(index)),
+  ])
+    assert.equal((await call('/dashboard-cards', 'PATCH', { category_ids })).status, 400);
+  assert.equal(
+    (await call('/dashboard-cards', 'PATCH', chosenCards, { Origin: 'https://example.com' })).status,
+    403,
+  );
+  assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data, chosenCards);
+});
+void test('backup card references are validated and legacy backups restore with default cards', async () => {
+  const backup = (await read(backupSchema, '/export')).data;
+  const invalid = { ...backup, dashboard_cards: { category_ids: ['missing'] } };
+  assert.equal((await call('/import-backup', 'POST', invalid)).status, 400);
+  assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data, chosenCards);
+  const legacy = { ...backup, dashboard_cards: undefined };
+  assert.equal((await call('/import-backup', 'POST', legacy)).status, 200);
+  assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data.category_ids, []);
+  assert.deepEqual((await read(backupSchema, '/export')).data.sessions, backup.sessions);
+});
+void test('category deletion and data reset remove related custom dashboard cards', async () => {
+  const category = (await call('/categories', 'POST', { name: 'Card category', group_name: 'Test' }))
+    .data;
+  const { id } = z.object({ id: z.string() }).parse(category);
+  await call('/dashboard-cards', 'PATCH', { category_ids: [id] });
+  assert.equal((await call('/categories/' + id, 'DELETE')).status, 200);
+  assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data.category_ids, []);
+  await call('/dashboard-cards', 'PATCH', chosenCards);
+  assert.equal((await call('/reset', 'POST', { confirmation: 'СБРОСИТЬ' })).status, 200);
+  assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data.category_ids, []);
 });

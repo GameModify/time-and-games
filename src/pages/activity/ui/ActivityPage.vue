@@ -5,15 +5,12 @@ import type { EditorView } from '../../../features/record-editor/index.ts';
 
 import { computed, toRefs } from 'vue';
 import {
-  Activity,
   BarChart3,
   CalendarDays,
   Check,
   ChevronLeft,
   ChevronRight,
   Clock3,
-  Code2,
-  Gamepad2,
   Layers,
   List,
   Play,
@@ -31,6 +28,7 @@ import ActivityRecords from './ActivityRecords.vue';
 import { activityGroups } from '../../../entities/activity/index.ts';
 import TimerCards from './TimerCards.vue';
 import DayTimeline from './DayTimeline.vue';
+import ActivityMetrics from './ActivityMetrics.vue';
 const props = defineProps<{ model: WorkspaceView; editor: EditorView }>();
 const {
   page,
@@ -38,7 +36,6 @@ const {
   view,
   display,
   categories,
-  active,
   selected,
   now,
   busy,
@@ -79,48 +76,7 @@ const donutGradient = computed(() => {
 });
 </script>
 <template>
-  <div class="stats-grid">
-    <article class="stat-card">
-      <span class="stat-icon purple"><Clock3 :size="19" /></span
-      ><span class="stat-label">Учтено времени</span><strong>{{ duration(stats.total) }}</strong
-      ><span class="stat-foot">Общее время без повторного счёта</span>
-      <div class="stat-decoration purple-line" />
-    </article>
-    <article class="stat-card">
-      <span class="stat-icon blue"><Code2 :size="19" /></span
-      ><span class="stat-label">Время за работой</span><strong>{{ duration(stats.work) }}</strong
-      ><span class="stat-foot">Кодинг, учёба и твои проекты</span>
-      <div class="stat-decoration blue-line" />
-    </article>
-    <article class="stat-card">
-      <span class="stat-icon orange"><Gamepad2 :size="19" /></span
-      ><span class="stat-label">Игровое время</span
-      ><strong>{{
-        duration(
-          stats.byCategory
-            .filter((c) => c.group_name === 'Развлечения' && (c.icon === 'gamepad' || c.name === 'Игры'))
-            .reduce((sum, c) => sum + c.duration, 0),
-        )
-      }}</strong
-      ><span class="stat-foot">Место для нового приключения</span>
-      <div class="stat-decoration orange-line" />
-    </article>
-    <article class="stat-card">
-      <span class="stat-icon green"><Activity :size="19" /></span
-      ><span class="stat-label">{{
-        page === 'analytics' ? 'Записей за период' : 'Активных таймеров'
-      }}</span
-      ><strong
-        >{{ page === 'analytics' ? stats.count : String(active.length).padStart(2, '0')
-        }}<small>{{
-          page === 'analytics' ? ' сессий' : active.length ? ' в процессе' : ' можно начинать'
-        }}</small></strong
-      ><span class="stat-foot">{{
-        page === 'analytics' ? 'Включая параллельные занятия' : 'Занятия можно совмещать'
-      }}</span>
-      <div class="stat-decoration green-line" />
-    </article>
-  </div>
+  <ActivityMetrics :model="model" />
 
   <section v-if="page === 'dashboard'" class="panel tracker-panel">
     <div class="section-heading">

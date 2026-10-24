@@ -1,3 +1,4 @@
+import { readDashboardCards, writeDashboardCards } from './dashboard-cards.ts';
 import { initializeSessionContext, withSessionContext } from './session-context.ts';
 import { exportTimerGroups, initializeTimers, restoreTimerGroups } from './timers/storage.ts';
 import type { DatabaseSync } from 'node:sqlite';
@@ -23,6 +24,7 @@ type BackupCategory = Backup['categories'][number];
 export function exportBackup(db: DatabaseSync, store: BackupMediaStore): Backup {
   initializeTimers(db);
   return {
+    dashboard_cards: readDashboardCards(db),
     format: 'time-and-games-backup',
     version: 3,
     exported_at: new Date().toISOString(),
@@ -76,12 +78,7 @@ function validateMedia(items: Media[]): void {
   }
 }
 export function validateBackup(data: Backup): void {
-  const index: BackupIndexes = {
-    categories: new Set(),
-    games: new Set(),
-    sessions: new Set(),
-    active: new Set(),
-  };
+  const index = backupIndexes();
   data.categories.forEach((item) => {
     validateCategory(item, index.categories);
   });
@@ -91,6 +88,10 @@ export function validateBackup(data: Backup): void {
   data.sessions.forEach((item) => {
     validateSession(item, index);
   });
+  ensure(
+    (data.dashboard_cards?.category_ids ?? []).every((id) => index.categories.has(id)),
+    'Категория карточки не найдена',
+  );
   validateMedia(data.media);
   validateTimerGroups(data);
 }
@@ -101,15 +102,14 @@ export function restoreBackup(db: DatabaseSync, store: BackupMediaStore, data: B
     db.exec(
       'DELETE FROM session_context;DELETE FROM timer_segments;DELETE FROM timer_groups;DELETE FROM media;DELETE FROM sessions;DELETE FROM games;DELETE FROM categories;',
     );
-    data.categories.forEach((item) => {
-      insertCategory(db, { ...item, is_work: Boolean(item.is_work) });
-    });
+    restoreCategories(db, data.categories);
     data.games.forEach((item) => {
       insertGameRecord(db, item);
     });
     data.sessions.forEach((item) => {
       insertSession(db, item);
     });
+    writeDashboardCards(db, data.dashboard_cards ?? { category_ids: [] });
     restoreTimerGroups(db, data.timer_groups ?? []);
     data.media.forEach((item) => store.restore(item));
   });
@@ -141,4 +141,12 @@ function validateGroupState(sessions: Session[], paused: boolean): void {
     !paused || sessions.every((session) => session.end_at !== null),
     'Занятие на паузе содержит активный отрезок',
   );
+}
+
+function backupIndexes(): BackupIndexes {
+  return { categories: new Set(), games: new Set(), sessions: new Set(), active: new Set() };
+}
+
+function restoreCategories(db: DatabaseSync, categories: BackupCategory[]): void {
+  for (const item of categories) insertCategory(db, { ...item, is_work: Boolean(item.is_work) });
 }

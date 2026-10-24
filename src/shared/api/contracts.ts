@@ -61,7 +61,18 @@ export const timerGroupSchema = z.object({
   paused: z.boolean(),
   session_ids: z.string().min(1).array().min(1),
 });
+export const dashboardCardsSchema = z.object({
+  category_ids: z
+    .string()
+    .min(1)
+    .max(100)
+    .array()
+    .max(50)
+    .refine((ids) => new Set(ids).size === ids.length, 'Категории карточек не должны повторяться'),
+});
+export type DashboardCards = z.infer<typeof dashboardCardsSchema>;
 export const bootstrapSchema = z.object({
+  dashboard_cards: dashboardCardsSchema.default({ category_ids: [] }),
   categories: categorySchema.array(),
   games: gameSchema.array(),
   active: timerSchema.array(),
@@ -72,6 +83,7 @@ export const backupCategorySchema = categorySchema.extend({
   is_work: z.union([z.boolean(), z.literal(0), z.literal(1)]),
 });
 export const backupSchema = z.object({
+  dashboard_cards: dashboardCardsSchema.optional(),
   format: z.literal('time-and-games-backup'),
   version: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   exported_at: z.string(),
