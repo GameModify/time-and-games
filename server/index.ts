@@ -1,5 +1,9 @@
+import { rangeSessions } from './tracking/live.ts';
+import { registerTimers } from './timers/routes.ts';
+import { timerDetails, pausedTimers } from './timers/storage.ts';
 import type { Request, Response, NextFunction } from 'express';
-import type { AddressInfo } from 'node:net';
+import { network } from './network/environment.ts';
+import { listenNetwork, closeNetwork } from './network/listen.ts';
 import { errorMessage } from '../src/shared/lib/errors.ts';
 import { z } from 'zod';
 import {
@@ -37,6 +41,7 @@ import {
 } from './validation.ts';
 import type { GameInput } from './validation.ts';
 import express from 'express';
+import { registerTracking } from './tracking/routes.ts';
 import { registerMediaRoutes } from './media.ts';
 import { withGameTimes } from './game-time.ts';
 import { DatabaseSync } from 'node:sqlite';
@@ -136,7 +141,9 @@ const selectGames = () =>
     ),
   );
 const selectActive = () =>
-  readRows(db, 'SELECT * FROM sessions WHERE end_at IS NULL ORDER BY start_at DESC', sessionSchema);
+  readRows(db, 'SELECT * FROM sessions WHERE end_at IS NULL ORDER BY start_at DESC', sessionSchema).map(
+    (session) => timerDetails(db, session),
+  );
 function error(res: Response, code: number, msg: string): void {
   res.status(code).json({ error: msg });
 }
@@ -171,7 +178,9 @@ function importGames(games: GameInput[]) {
   }
 }
 
+registerTimers(api, db);
 const mediaStore = registerMediaRoutes(api, db);
+const stopTracking = registerTracking(api, db);
 
 api.get('/api/health', (_req, res) => res.json({ ok: true, app: 'Time & Games', local: true }));
 api.get('/api/bootstrap', (_req, res) =>
@@ -179,6 +188,7 @@ api.get('/api/bootstrap', (_req, res) =>
     categories: selectCategories(),
     games: selectGames(),
     active: selectActive(),
+    paused: pausedTimers(db),
     media: mediaStore.list(),
   }),
 );
@@ -225,13 +235,7 @@ api.get('/api/sessions', (req, res) => {
     error(res, 400, 'Неверный диапазон дат');
     return;
   }
-  res.json(
-    db
-      .prepare(
-        'SELECT * FROM sessions WHERE start_at < ? AND (end_at IS NULL OR end_at > ?) ORDER BY start_at DESC',
-      )
-      .all(to, from),
-  );
+  res.json(rangeSessions(db, from, to));
 });
 api.post('/api/sessions', (req, res) => {
   const plan = sessionPlan(db, sessionInputSchema.parse(req.body));
@@ -246,7 +250,17 @@ api.post('/api/sessions', (req, res) => {
 api.patch('/api/sessions/:id', (req, res) => {
   const old = readRow(db, 'SELECT * FROM sessions WHERE id=?', sessionSchema, [req.params.id]);
   ensure(old, 'Запись не найдена', 404);
-  const next = sessionPatch(db, old, sessionInputSchema.parse(req.body));
+  const input = sessionInputSchema.parse(req.body);
+  ensure(
+    !(
+      input.end_at === null &&
+      old.end_at !== null &&
+      db.prepare('SELECT 1 FROM timer_segments WHERE session_id=?').get(old.id)
+    ),
+    'Для продолжения занятия используй кнопку «Продолжить»',
+    409,
+  );
+  const next = sessionPatch(db, old, input);
   db.prepare(
     'UPDATE sessions SET category_id=@category_id,game_id=@game_id,title=@title,note=@note,start_at=@start_at,end_at=@end_at WHERE id=@id',
   ).run(sessionUpdateBindings(next));
@@ -351,7 +365,9 @@ api.post('/api/reset', (req, res) => {
   }
   db.exec('BEGIN');
   try {
-    db.exec('DELETE FROM sessions; DELETE FROM games; DELETE FROM categories; DELETE FROM media;');
+    db.exec(
+      'DELETE FROM timer_segments; DELETE FROM timer_groups; DELETE FROM sessions; DELETE FROM games; DELETE FROM categories; DELETE FROM media; DELETE FROM tracking_inbox; DELETE FROM tracking_configuration; DELETE FROM tracking_bindings;',
+    );
     seedCategories();
     db.exec('COMMIT');
     res.json({ ok: true });
@@ -420,13 +436,10 @@ if (existsSync(dist)) {
     res.type('text/plain').send('Time & Games: запусти npm run dev или npm run build'),
   );
 }
-const PORT = process.env.TNG_PORT === undefined ? 3535 : Number(process.env.TNG_PORT);
-const HOST = '127.0.0.1';
-const server = api.listen(PORT, HOST, () => {
-  console.log(`Time & Games running at http://${HOST}:${(server.address() as AddressInfo).port}`);
-});
+const servers = listenNetwork(api, network);
 function shutdown() {
-  server.close(() => {
+  stopTracking();
+  closeNetwork(servers, () => {
     db.close();
     process.exit(0);
   });

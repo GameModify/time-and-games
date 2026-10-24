@@ -8,6 +8,7 @@ import {
   bootstrapSchema,
   backupSchema,
   sessionSchema,
+  timerSchema,
   gameSchema,
   backupCategorySchema,
 } from '../src/shared/api/contracts.ts';
@@ -51,7 +52,7 @@ function attachStartupListeners(resolve: (url: string) => void, reject: (error: 
 }
 async function launch() {
   child = spawn(process.execPath, ['server/index.ts'], {
-    env: { ...process.env, TNG_PORT: '0', TNG_DATA_DIR: directory },
+    env: { ...process.env, TNG_PORT: '0', TNG_LAN_HOST: '', TNG_DATA_DIR: directory },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   base = await awaitServerAddress();
@@ -358,3 +359,44 @@ void test('reset requires explicit confirmation, clears records and games, and r
   await launch();
   assert.equal((await read(bootstrapSchema, '/bootstrap')).data.categories.length, 10);
 });
+
+async function restoredPause() {
+  const timer = (
+    await read(sessionSchema.array(), '/sessions', 'POST', {
+      category_id: 'work-study',
+      title: 'Paused fixture',
+      start_at: Date.now() - 5000,
+    })
+  ).data[0];
+  assert.ok(timer);
+  assert.equal((await call('/sessions/' + timer.id + '/pause', 'POST', {})).status, 200);
+  const backup = (await read(backupSchema, '/export')).data;
+  assert.equal(backup.version, 3);
+  await shutdown();
+  await launch();
+  assert.equal((await read(bootstrapSchema, '/bootstrap')).data.paused[0]?.timer_id, timer.id);
+  assert.equal((await call('/import-backup', 'POST', backup)).status, 200);
+  return { timer, backup };
+}
+void test('paused timers survive API restart and backup, then resume without counting the gap', async () => {
+  const { timer, backup } = await restoredPause();
+  const paused = (await read(bootstrapSchema, '/bootstrap')).data.paused[0];
+  assert.ok(paused);
+  const next = (await read(timerSchema, '/timers/' + timer.id + '/resume', 'POST', {})).data;
+  assert.equal(next.elapsed_before, (paused.end_at ?? 0) - paused.start_at);
+  assert.equal(next.timer_id, timer.id);
+  assert.equal((await call('/timers/' + timer.id + '/resume', 'POST', {})).status, 409);
+  assert.equal((await call('/sessions/' + timer.id, 'PATCH', { end_at: null })).status, 409);
+  await assertInvalidTimerBackup(backup);
+  assert.equal((await call('/sessions/' + next.id + '/pause', 'POST', {})).status, 200);
+  assert.equal((await call('/timers/' + timer.id + '/finish', 'POST', {})).status, 200);
+  assert.equal((await read(bootstrapSchema, '/bootstrap')).data.paused.length, 0);
+});
+
+async function assertInvalidTimerBackup(backup: Backup) {
+  const invalid = {
+    ...backup,
+    timer_groups: [{ id: 'invalid', paused: true, session_ids: ['missing'] }],
+  };
+  assert.equal((await call('/import-backup', 'POST', invalid)).status, 400);
+}

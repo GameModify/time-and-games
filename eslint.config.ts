@@ -44,6 +44,8 @@ export default defineConfig(
       'server/media.ts',
       'server/storage.ts',
       'server/backup.ts',
+      'server/tracking/storage.ts',
+      'server/tracking/http.ts',
     ],
     rules: {
       'no-restricted-syntax': [

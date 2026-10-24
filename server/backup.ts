@@ -1,3 +1,4 @@
+import { exportTimerGroups, initializeTimers, restoreTimerGroups } from './timers/storage.ts';
 import type { DatabaseSync } from 'node:sqlite';
 import { backupCategorySchema, gameSchema, sessionSchema } from '../src/shared/api/contracts.ts';
 import type { Backup, Game, Session } from '../src/shared/api/contracts.ts';
@@ -19,13 +20,15 @@ interface BackupIndexes {
 }
 type BackupCategory = Backup['categories'][number];
 export function exportBackup(db: DatabaseSync, store: BackupMediaStore): Backup {
+  initializeTimers(db);
   return {
     format: 'time-and-games-backup',
-    version: 2,
+    version: 3,
     exported_at: new Date().toISOString(),
     categories: readRows(db, 'SELECT * FROM categories ORDER BY sort_order', backupCategorySchema),
     games: readRows(db, 'SELECT * FROM games', gameSchema),
     sessions: readRows(db, 'SELECT * FROM sessions', sessionSchema),
+    timer_groups: exportTimerGroups(db),
     media: store.list(),
   };
 }
@@ -88,10 +91,14 @@ export function validateBackup(data: Backup): void {
     validateSession(item, index);
   });
   validateMedia(data.media);
+  validateTimerGroups(data);
 }
 export function restoreBackup(db: DatabaseSync, store: BackupMediaStore, data: Backup): void {
+  initializeTimers(db);
   transaction(db, () => {
-    db.exec('DELETE FROM media;DELETE FROM sessions;DELETE FROM games;DELETE FROM categories;');
+    db.exec(
+      'DELETE FROM timer_segments;DELETE FROM timer_groups;DELETE FROM media;DELETE FROM sessions;DELETE FROM games;DELETE FROM categories;',
+    );
     data.categories.forEach((item) => {
       insertCategory(db, { ...item, is_work: Boolean(item.is_work) });
     });
@@ -101,6 +108,35 @@ export function restoreBackup(db: DatabaseSync, store: BackupMediaStore, data: B
     data.sessions.forEach((item) => {
       insertSession(db, item);
     });
+    restoreTimerGroups(db, data.timer_groups ?? []);
     data.media.forEach((item) => store.restore(item));
   });
+}
+
+function validateTimerGroups(data: Backup): void {
+  const ids = new Set(data.sessions.map((session) => session.id)),
+    linked = new Set<string>(),
+    groups = new Set<string>();
+  for (const group of data.timer_groups ?? []) {
+    addUnique(groups, group.id, 'Повторяющееся занятие');
+    for (const id of group.session_ids) {
+      ensure(ids.has(id), 'Не найден отрезок занятия');
+      addUnique(linked, id, 'Отрезок связан с несколькими занятиями');
+    }
+    validateGroupState(
+      data.sessions.filter((session) => group.session_ids.includes(session.id)),
+      group.paused,
+    );
+  }
+}
+
+function validateGroupState(sessions: Session[], paused: boolean): void {
+  ensure(
+    sessions.filter((session) => session.end_at === null).length <= 1,
+    'У занятия несколько активных отрезков',
+  );
+  ensure(
+    !paused || sessions.every((session) => session.end_at !== null),
+    'Занятие на паузе содержит активный отрезок',
+  );
 }

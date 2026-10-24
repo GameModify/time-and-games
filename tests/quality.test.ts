@@ -1,11 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { CompilerOptions } from 'typescript';
-import { projectDependencies } from '../skills/strict-typescript-architecture/scripts/dependencies.ts';
-import {
-  assertCompilerOptions,
-  assertLintConfiguration,
-} from '../skills/strict-typescript-architecture/scripts/configuration.ts';
+import { projectDependencies } from '../scripts/quality/dependencies.ts';
+import { assertCompilerOptions, assertLintConfiguration } from '../scripts/quality/configuration.ts';
 
 const deps = projectDependencies(process.cwd());
 const options: CompilerOptions = {

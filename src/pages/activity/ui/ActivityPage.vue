@@ -15,18 +15,21 @@ import {
   Gamepad2,
   Layers,
   List,
-  Pencil,
   Play,
   Plus,
-  Square,
   Timer,
 } from 'lucide-vue-next';
-import { clock, shortDate, weekday, posterFailed } from '../../../shared/lib/format.ts';
+import { clock, weekday, posterFailed } from '../../../shared/lib/format.ts';
 import { duration, localDate } from '../../../shared/lib/date.ts';
 import { activityIcons as icons } from '../../../entities/activity/index.ts';
 import { statuses } from '../../../entities/game/index.ts';
 import PeriodChart from './PeriodChart.vue';
 import LibraryHistory from './LibraryHistory.vue';
+import AutomaticTracking from './AutomaticTracking.vue';
+import ActivityRecords from './ActivityRecords.vue';
+import { activityGroups } from '../../../entities/activity/index.ts';
+import TimerCards from './TimerCards.vue';
+import DayTimeline from './DayTimeline.vue';
 const props = defineProps<{ model: WorkspaceView; editor: EditorView }>();
 const {
   page,
@@ -47,26 +50,17 @@ const {
   playingGames,
   dateLabel,
   daySessions,
-  timeline,
-  timelineStart,
-  timelineHeight,
-  hours,
-  nowPosition,
-  category,
-  gameName,
   toggle,
   start,
-  stop,
-  stopAll,
   navigate,
   changeView,
   changeDate,
   changeDisplay,
   step,
-  eventStyle,
   dayOpen,
 } = toRefs(props.model);
 const { editSession, editGame } = toRefs(props.editor);
+const recordCount = computed(() => activityGroups(daySessions.value, now.value).length);
 const donutGradient = computed(() => {
   let cursor = 0;
   const total = props.model.stats.categoryTotal;
@@ -162,34 +156,8 @@ const donutGradient = computed(() => {
         <Play :size="16" fill="currentColor" />Начать занятие
       </button>
     </div>
-    <div v-if="active.length" class="running-list">
-      <div
-        v-for="s in active"
-        :key="s.id"
-        class="running-row"
-        :style="{ '--activity': category(s.category_id).color }"
-      >
-        <span class="running-dot" />
-        <div class="running-name">
-          <strong>{{ s.title || gameName(s.game_id) || category(s.category_id).name }}</strong
-          ><small
-            >С {{ clock(s.start_at) }} · {{ category(s.category_id).group_name
-            }}<template v-if="localDate(s.start_at) !== localDate()">
-              · {{ shortDate(localDate(s.start_at)) }}</template
-            ></small
-          >
-        </div>
-        <span class="timer-digits">{{ duration(now - s.start_at, true) }}</span
-        ><button class="icon-button" aria-label="Изменить активную запись" @click="editSession(s)">
-          <Pencil :size="16" /></button
-        ><button class="stop-button" :disabled="busy" @click="stop(s)">
-          <Square :size="12" fill="currentColor" />Стоп
-        </button>
-      </div>
-      <button v-if="active.length > 1" class="text-button stop-all" :disabled="busy" @click="stopAll">
-        Остановить все
-      </button>
-    </div>
+    <TimerCards :model="model" @edit="editSession" />
+    <AutomaticTracking :now="now" />
   </section>
 
   <div class="dashboard-columns" :class="{ 'analytics-columns': page === 'analytics' }">
@@ -258,102 +226,21 @@ const donutGradient = computed(() => {
         :view="view"
         @open-day="dayOpen"
       />
-      <template v-else-if="view === 'day' && display === 'timeline'">
-        <section v-if="timeline.some((s) => s.end - s.start < 3600000)" class="short-records">
-          <h3>Короткие записи</h3>
-          <div class="short-record-grid">
-            <button
-              v-for="s in timeline.filter((s) => s.end - s.start < 3600000)"
-              :key="s.id"
-              class="short-record-label"
-              :style="{ '--activity': category(s.category_id).color }"
-              @click="editSession(s)"
-            >
-              <strong>{{ s.title || gameName(s.game_id) || category(s.category_id).name }}</strong
-              ><small
-                >{{ clock(s.start_at) }} - {{ s.end_at === null ? 'сейчас' : clock(s.end_at) }} ·
-                {{ duration(s.end - s.start, true) }}</small
-              >
-            </button>
-          </div>
-        </section>
-        <div class="timeline-scroll">
-          <div
-            class="timeline"
-            :style="{
-              height: `${timelineHeight + 26}px`,
-              minWidth: `${Math.max(0, ...timeline.map((s) => s.lanes)) * 210 + 60}px`,
-            }"
-          >
-            <div
-              v-for="h in hours"
-              :key="h"
-              class="hour-line"
-              :style="{ top: `${(h - timelineStart) * 72}px` }"
-            >
-              <span>{{ String(h).padStart(2, '0') }}:00</span>
-            </div>
-            <div class="event-area">
-              <button
-                v-for="s in timeline"
-                :key="s.id"
-                class="timeline-event"
-                :class="{
-                  compact: s.end - s.start < 5400000,
-                  'short-record': s.end - s.start < 3600000,
-                }"
-                :style="eventStyle(s)"
-                :title="`${category(s.category_id).name} · ${clock(s.start_at)} - ${s.end_at === null ? 'сейчас' : clock(s.end_at)}${s.note ? ` · ${s.note}` : ''}`"
-                @click="editSession(s)"
-              >
-                <strong
-                  >{{ s.title || category(s.category_id).name
-                  }}<span v-if="s.end_at === null" class="running-dot" /></strong
-                ><small
-                  >{{ clock(s.start_at) }} - {{ s.end_at === null ? 'сейчас' : clock(s.end_at) }} ·
-                  {{ duration(s.end - s.start) }}</small
-                >
-                <span v-if="s.game_id" class="session-game"
-                  >{{ gameName(s.game_id) }} · {{ category(s.category_id).name }}</span
-                >
-                <p v-if="s.note">{{ s.note }}</p>
-              </button>
-              <div
-                v-if="date === localDate(now) && nowPosition >= 0 && nowPosition <= timelineHeight"
-                class="now-line"
-                :style="{ top: `${nowPosition}px` }"
-              ></div>
-            </div>
-            <div v-if="!timeline.length" class="timeline-empty">
-              <Clock3 :size="30" /><strong>Этот день - чистый лист</strong
-              ><span>Запусти таймер или добавь, чем уже занимался</span
-              ><button class="button secondary" @click="editSession()">
-                <Plus :size="15" />Добавить запись
-              </button>
-            </div>
-          </div>
-        </div>
-      </template>
+      <DayTimeline
+        v-else-if="view === 'day' && display === 'timeline'"
+        :sessions="daySessions"
+        :categories="categories"
+        :date="date"
+        :now="now"
+        @edit="editSession"
+      />
       <div v-else-if="view === 'day'" class="session-list">
         <div v-if="!daySessions.length" class="empty-state">
           <Clock3 :size="32" />
           <h3>Пока нет записей</h3>
           <p>Добавь первое занятие этого дня.</p>
         </div>
-        <button v-for="s in daySessions" :key="s.id" class="session-row" @click="editSession(s)">
-          <span class="category-dot" :style="{ background: category(s.category_id).color }" /><span
-            ><strong>{{ s.title || category(s.category_id).name }}</strong
-            ><small
-              >{{ clock(s.start_at) }} - {{ s.end_at === null ? 'сейчас' : clock(s.end_at) }} ·
-              {{
-                [gameName(s.game_id), s.note || category(s.category_id).group_name]
-                  .filter(Boolean)
-                  .join(' · ')
-              }}</small
-            ></span
-          ><b>{{ duration((s.end_at ?? now) - s.start_at) }}</b
-          ><Pencil :size="14" />
-        </button>
+        <ActivityRecords :sessions="daySessions" :model="model" @edit="editSession" />
       </div>
       <div v-else class="calendar-grid" :class="{ monthly: view === 'month' }">
         <button
@@ -380,18 +267,8 @@ const donutGradient = computed(() => {
         v-if="page === 'dashboard' && view === 'day' && display === 'timeline' && daySessions.length"
         class="day-details"
       >
-        <summary>Записи и результаты · {{ daySessions.length }}</summary>
-        <button v-for="s in daySessions" :key="s.id" class="detail-record" @click="editSession(s)">
-          <strong :style="{ color: category(s.category_id).color }">{{
-            s.title || category(s.category_id).name
-          }}</strong
-          ><small
-            >{{ clock(s.start_at) }} - {{ s.end_at === null ? 'сейчас' : clock(s.end_at) }} ·
-            {{ duration((s.end_at ?? now) - s.start_at) }}</small
-          >
-          <span v-if="s.game_id" class="session-game">{{ gameName(s.game_id) }}</span>
-          <p>{{ s.note || 'Без заметки' }}</p>
-        </button>
+        <summary>Записи и результаты · {{ recordCount }}</summary>
+        <ActivityRecords :sessions="daySessions" :model="model" @edit="editSession" />
       </details>
       <div class="panel-footer">
         <span

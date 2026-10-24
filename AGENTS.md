@@ -11,4 +11,4 @@
 - Полные проверки запускай после завершённой задачи, перед коммитом/PR: npm run check, npm run build, npm test. Не запускай их после каждого микроизменения. Для UI также нужна проверка в доступном браузере; явно сообщай, если инструменты не имеют доступа к localhost.
 - Не коммить SQLite, резервные копии пользователя, Steam API Key, .env, node_modules, dist и файлы .qa.
 
-- При изменении TypeScript, Vue, линтера или архитектуры используй скилл [strict-typescript-architecture](skills/strict-typescript-architecture/SKILL.md). Перед завершением запускай `npm run verify`: он проверяет настройки качества и выполняет check, build и test.
+- Перед завершением запускай `npm run verify`: он проверяет настройки качества и выполняет check, build и test.

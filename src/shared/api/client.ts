@@ -1,4 +1,11 @@
 import { z } from 'zod';
+import type {
+  GameApplication,
+  TrackingConnection,
+  TrackingImport,
+  TrackingIgnore,
+  TrackingRulesWrite,
+} from './trackingContracts.ts';
 import type { ZodType } from 'zod';
 import type { Backup } from './contracts.ts';
 import type { MediaInput } from './mediaContracts.ts';
@@ -9,7 +16,18 @@ import type {
   SettingsWriteDto,
 } from './inputContracts.ts';
 export type WriteDto =
-  SessionWriteDto | CategoryWriteDto | GameWriteDto | SettingsWriteDto | MediaInput | Backup;
+  | SessionWriteDto
+  | CategoryWriteDto
+  | GameWriteDto
+  | SettingsWriteDto
+  | MediaInput
+  | Backup
+  | GameApplication
+  | TrackingConnection
+  | TrackingImport
+  | TrackingIgnore
+  | TrackingRulesWrite
+  | { paused: boolean };
 type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 interface ApiRequest {
   path: string;

@@ -31,6 +31,8 @@ export const gameSchema = z.object({
   total_minutes: z.number().optional(),
 });
 export const sessionSchema = z.object({
+  tracking_live: z.boolean().optional(),
+  group_id: z.string().optional(),
   id: z.string(),
   category_id: z.string(),
   game_id: z.string().nullable(),
@@ -40,10 +42,21 @@ export const sessionSchema = z.object({
   end_at: z.number().nullable(),
   created_at: z.number(),
 });
+export const timerSchema = sessionSchema.extend({
+  elapsed_before: z.number().nonnegative().default(0),
+  timer_id: z.string().optional(),
+});
+export const pausedTimerSchema = timerSchema.required({ timer_id: true });
+export const timerGroupSchema = z.object({
+  id: z.string().min(1),
+  paused: z.boolean(),
+  session_ids: z.string().min(1).array().min(1),
+});
 export const bootstrapSchema = z.object({
   categories: categorySchema.array(),
   games: gameSchema.array(),
-  active: sessionSchema.array(),
+  active: timerSchema.array(),
+  paused: pausedTimerSchema.array().default([]),
   media: mediaSchema.array().default([]),
 });
 export const backupCategorySchema = categorySchema.extend({
@@ -51,11 +64,12 @@ export const backupCategorySchema = categorySchema.extend({
 });
 export const backupSchema = z.object({
   format: z.literal('time-and-games-backup'),
-  version: z.union([z.literal(1), z.literal(2)]),
+  version: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   exported_at: z.string(),
   categories: backupCategorySchema.array(),
   games: gameSchema.array(),
   sessions: sessionSchema.array(),
+  timer_groups: timerGroupSchema.array().optional(),
   media: mediaSchema.array().default([]),
 });
 export const steamResultSchema = z.object({
@@ -73,6 +87,9 @@ export type Category = z.infer<typeof categorySchema>;
 export type Game = z.infer<typeof gameSchema>;
 export type GameStatus = z.infer<typeof gameStatusSchema>;
 export type Session = z.infer<typeof sessionSchema>;
+export type PausedTimer = z.infer<typeof pausedTimerSchema>;
+export type Timer = z.infer<typeof timerSchema>;
+export type TimerGroup = z.infer<typeof timerGroupSchema>;
 export type Bootstrap = z.infer<typeof bootstrapSchema>;
 export type Backup = z.infer<typeof backupSchema>;
 export type SteamResult = z.infer<typeof steamResultSchema>;
@@ -80,6 +97,7 @@ export type ImportResult = z.infer<typeof importResultSchema>;
 export type DateValue = Date | string | number;
 export type NumericInput = string | number;
 export type ActivityCategory = Pick<Category, 'id'> & Partial<Omit<Category, 'id'>>;
-export type ActivitySession = Pick<Session, 'category_id' | 'start_at' | 'end_at'>;
+export type ActivitySession = Pick<Session, 'category_id' | 'start_at' | 'end_at'> &
+  Partial<Pick<Session, 'id' | 'group_id'>>;
 export type TimelineSession = Pick<Session, 'id' | 'start_at' | 'end_at'> &
   Partial<Omit<Session, 'id' | 'start_at' | 'end_at'>>;

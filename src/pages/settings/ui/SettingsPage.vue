@@ -4,6 +4,7 @@ import type { EditorView } from '../../../features/record-editor/index.ts';
 import type { ThemeView } from '../../../features/appearance/index.ts';
 
 import { toRefs } from 'vue';
+import TrackingPanel from './TrackingPanel.vue';
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -54,6 +55,7 @@ const { editCategory, remove, readBackup, open } = toRefs(props.editor);
       </button>
     </div>
   </section>
+  <TrackingPanel :categories="categories" />
   <section class="panel settings-panel">
     <div class="section-heading">
       <div>

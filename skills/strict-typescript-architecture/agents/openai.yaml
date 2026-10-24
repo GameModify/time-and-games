@@ -1,6 +1,0 @@
-interface:
-  display_name: "Строгий TypeScript и архитектура"
-  short_description: "Типизация, функции до 20 строк и границы модулей"
-  default_prompt: "Примени $strict-typescript-architecture к изменениям и проверь типизацию, сложность функций и архитектуру."
-policy:
-  allow_implicit_invocation: true

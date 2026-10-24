@@ -20,7 +20,7 @@ export function summarize<C extends ActivityCategory>(
     total: unionDuration(clipped.map((s) => s.interval)),
     work: workDuration(clipped, categories),
     byCategory,
-    count: clipped.length,
+    count: new Set(clipped.map((session) => session.group_id ?? session.id ?? session)).size,
     categoryTotal: byCategory.reduce((sum, c) => sum + c.duration, 0),
   };
 }

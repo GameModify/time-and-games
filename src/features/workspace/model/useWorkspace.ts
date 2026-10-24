@@ -1,6 +1,13 @@
 import type { UnwrapNestedRefs } from 'vue';
 import type { Media } from '../../../shared/api/mediaContracts.ts';
-import type { Bootstrap, Category, Game, Session } from '../../../shared/api/contracts.ts';
+import type {
+  Bootstrap,
+  Category,
+  Game,
+  Session,
+  Timer,
+  PausedTimer,
+} from '../../../shared/api/contracts.ts';
 import { errorMessage } from '../../../shared/lib/errors.ts';
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -53,7 +60,8 @@ class WorkspaceController {
   games = ref<Game[]>([]);
   media = ref<Media[]>([]);
   sessions = ref<Session[]>([]);
-  active = ref<Session[]>([]);
+  active = ref<Timer[]>([]);
+  paused = ref<PausedTimer[]>([]);
   selected = ref<string[]>([]);
   now = ref(Date.now());
   loading = ref(true);
@@ -143,6 +151,7 @@ class WorkspaceController {
     this.games.value = bootstrap.games;
     this.media.value = bootstrap.media;
     this.active.value = bootstrap.active;
+    this.paused.value = bootstrap.paused;
     this.sessions.value = rows;
     this.selected.value = this.selected.value.filter(
       (id) => !this.activeIds.value.has(id) && this.categoryMap.value[id],
@@ -190,6 +199,12 @@ class WorkspaceController {
       'Время сохранено. Добавь заметку в записи.',
     );
   };
+  pauseTimer = (session: Session) =>
+    this.action(() => api('/sessions/' + session.id + '/pause', 'POST'), 'Занятие на паузе');
+  resumeTimer = (timer: PausedTimer) =>
+    this.action(() => api('/timers/' + timer.timer_id + '/resume', 'POST'), 'Занятие продолжено');
+  finishPaused = (timer: PausedTimer) =>
+    this.action(() => api('/timers/' + timer.timer_id + '/finish', 'POST'), 'Занятие завершено');
   stopAll = async () => {
     await this.action(async () => {
       const end = Date.now();
@@ -276,7 +291,7 @@ class WorkspaceController {
       }, 1000);
       this.refreshTimer = setInterval(() => {
         void this.load();
-      }, 30000);
+      }, 5000);
     });
   };
   registerUnmounted = () => {
@@ -303,6 +318,10 @@ type WorkspaceControllerView = Pick<
   | 'media'
   | 'sessions'
   | 'active'
+  | 'paused'
+  | 'pauseTimer'
+  | 'resumeTimer'
+  | 'finishPaused'
   | 'selected'
   | 'now'
   | 'loading'

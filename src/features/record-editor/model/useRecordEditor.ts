@@ -118,6 +118,10 @@ class RecordEditorController extends RecordEditorControllerContext {
     }
   };
   editSession = (session?: Session) => {
+    if (session?.tracking_live) {
+      this.flash('Автоматическую запись можно изменить после паузы видео');
+      return;
+    }
     this.open('session', sessionValues(this.date.value, session));
     this.syncSessionDuration();
   };
