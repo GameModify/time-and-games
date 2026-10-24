@@ -19,7 +19,12 @@ import {
   isCalendarView,
 } from '../../../shared/lib/navigationState.ts';
 import type { NavigationState, CalendarDisplay } from '../../../shared/lib/navigationState.ts';
-import { bootstrapSchema, sessionSchema, dashboardCardsSchema } from '../../../shared/api/contracts.ts';
+import {
+  bootstrapSchema,
+  sessionSchema,
+  dashboardCardsSchema,
+  defaultDashboardCards,
+} from '../../../shared/api/contracts.ts';
 import { api, readApi } from '../../../shared/api/client.ts';
 import { dayBounds, localDate, periodDays, shiftDate } from '../../../shared/lib/date.ts';
 import {
@@ -66,7 +71,7 @@ class WorkspaceController {
   sessions = ref<Session[]>([]);
   active = ref<Timer[]>([]);
   paused = ref<PausedTimer[]>([]);
-  dashboardCards = ref<DashboardCards>({ category_ids: [] });
+  dashboardCards = ref<DashboardCards>(defaultDashboardCards());
   saveDashboardCards = async (cards: DashboardCards): Promise<void> => {
     this.dashboardCards.value = await readApi('/dashboard-cards', dashboardCardsSchema, 'PATCH', cards);
     await this.load();

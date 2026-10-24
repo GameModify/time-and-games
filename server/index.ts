@@ -1,4 +1,4 @@
-import { registerDashboardCards, readDashboardCards } from './dashboard-cards.ts';
+import { registerDashboardCards, readDashboardCards, resetDashboardCards } from './dashboard-cards.ts';
 import { rangeSessions } from './tracking/live.ts';
 import { registerTimers } from './timers/routes.ts';
 import { timerDetails, pausedTimers } from './timers/storage.ts';
@@ -361,6 +361,10 @@ api.post('/api/steam/import-owned', async (req, res) => {
     error(res, 502, 'Не удалось получить библиотеку Steam: ' + errorMessage(err));
   }
 });
+function restoreDefaults(): void {
+  seedCategories();
+  resetDashboardCards(db);
+}
 api.post('/api/reset', (req, res) => {
   if (settingsInputSchema.parse(req.body).confirmation !== 'СБРОСИТЬ') {
     error(res, 400, 'Для сброса требуется подтверждение СБРОСИТЬ');
@@ -371,7 +375,7 @@ api.post('/api/reset', (req, res) => {
     db.exec(
       'DELETE FROM timer_segments; DELETE FROM timer_groups; DELETE FROM sessions; DELETE FROM games; DELETE FROM categories; DELETE FROM media; DELETE FROM tracking_inbox; DELETE FROM tracking_configuration; DELETE FROM tracking_bindings;',
     );
-    seedCategories();
+    restoreDefaults();
     db.exec('COMMIT');
     res.json({ ok: true });
   } catch (e) {

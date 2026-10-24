@@ -1,3 +1,4 @@
+import { dashboardCardsSchema, defaultDashboardCards } from './dashboardContracts.ts';
 import { z } from 'zod';
 import { mediaSchema, personalRatingSchema } from './mediaContracts.ts';
 
@@ -61,18 +62,10 @@ export const timerGroupSchema = z.object({
   paused: z.boolean(),
   session_ids: z.string().min(1).array().min(1),
 });
-export const dashboardCardsSchema = z.object({
-  category_ids: z
-    .string()
-    .min(1)
-    .max(100)
-    .array()
-    .max(50)
-    .refine((ids) => new Set(ids).size === ids.length, 'Категории карточек не должны повторяться'),
-});
-export type DashboardCards = z.infer<typeof dashboardCardsSchema>;
+export { dashboardCardsSchema, defaultDashboardCards } from './dashboardContracts.ts';
+export type { DashboardCard, DashboardCards, DashboardMetric } from './dashboardContracts.ts';
 export const bootstrapSchema = z.object({
-  dashboard_cards: dashboardCardsSchema.default({ category_ids: [] }),
+  dashboard_cards: dashboardCardsSchema.default(defaultDashboardCards),
   categories: categorySchema.array(),
   games: gameSchema.array(),
   active: timerSchema.array(),

@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { X } from 'lucide-vue-next';
-import type { Category, DashboardCards } from '../../../shared/api/contracts.ts';
+import type { Category, DashboardCard, DashboardCards } from '../../../shared/api/contracts.ts';
+import { dashboardCardKey } from '../../../shared/api/dashboardContracts.ts';
+import { metricChoices, categoryMetricChoices, isMetricSelected } from '../model/metrics.ts';
 import CheckboxField from '../../../shared/ui/CheckboxField.vue';
 import { createBackdropDismiss } from '../../../shared/lib/backdrop.ts';
 import { useDialogFocus } from '../../../shared/lib/dialogFocus.ts';
@@ -12,24 +14,27 @@ const props = defineProps<{
   save: (cards: DashboardCards) => Promise<void>;
 }>();
 const emit = defineEmits<{ close: [] }>();
-const selected = ref([...props.selection.category_ids]),
+const selected = ref([...props.selection.cards]),
   busy = ref(false),
   error = ref('');
 const modal = ref<HTMLElement | null>(null);
+const categoryChoices = computed(() => categoryMetricChoices(props.categories));
 const backdrop = createBackdropDismiss(close);
 useDialogFocus(modal, close);
 function close(): void {
   if (!busy.value) emit('close');
 }
-function toggle(id: string, checked: boolean): void {
-  selected.value = checked ? [...selected.value, id] : selected.value.filter((item) => item !== id);
+function toggle(card: DashboardCard, checked: boolean): void {
+  selected.value = checked
+    ? [...selected.value, card]
+    : selected.value.filter((item) => dashboardCardKey(item) !== dashboardCardKey(card));
 }
 async function submit(): Promise<void> {
   if (busy.value) return;
   busy.value = true;
   error.value = '';
   try {
-    await props.save({ category_ids: selected.value });
+    await props.save({ cards: selected.value });
     emit('close');
   } catch (cause) {
     error.value = errorMessage(cause);
@@ -61,17 +66,25 @@ async function submit(): Promise<void> {
       </header>
       <form class="modal-form" @submit.prevent="submit">
         <p class="field-hint">
-          Добавь интересующие категории. Сними галочку, чтобы убрать карточку. Выбор сохранится на всех
-          устройствах, подключённых к этому сайту.
+          Выбери нужные показатели и категории. Любую карточку можно убрать, сняв галочку. Выбор
+          сохранится на всех устройствах, подключённых к этому сайту.
         </p>
-        <fieldset class="metric-options" :disabled="busy">
-          <legend>Дополнительные карточки</legend>
+        <fieldset
+          v-for="group in [
+            { label: 'Общие показатели', choices: metricChoices },
+            { label: 'Категории', choices: categoryChoices },
+          ]"
+          :key="group.label"
+          class="metric-options"
+          :disabled="busy"
+        >
+          <legend>{{ group.label }}</legend>
           <CheckboxField
-            v-for="category in categories"
-            :key="category.id"
-            :modelValue="selected.includes(category.id)"
-            :label="category.name"
-            @update:model-value="toggle(category.id, $event)"
+            v-for="choice in group.choices"
+            :key="dashboardCardKey(choice.card)"
+            :modelValue="isMetricSelected(selected, choice.card)"
+            :label="choice.label"
+            @update:model-value="toggle(choice.card, $event)"
           />
         </fieldset>
         <p v-if="error" class="alert error" role="alert">{{ error }}</p>

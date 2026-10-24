@@ -2,7 +2,12 @@ import { readDashboardCards, writeDashboardCards } from './dashboard-cards.ts';
 import { initializeSessionContext, withSessionContext } from './session-context.ts';
 import { exportTimerGroups, initializeTimers, restoreTimerGroups } from './timers/storage.ts';
 import type { DatabaseSync } from 'node:sqlite';
-import { backupCategorySchema, gameSchema, sessionSchema } from '../src/shared/api/contracts.ts';
+import {
+  backupCategorySchema,
+  gameSchema,
+  sessionSchema,
+  defaultDashboardCards,
+} from '../src/shared/api/contracts.ts';
 import type { Backup, Game, Session } from '../src/shared/api/contracts.ts';
 import type { Media } from '../src/shared/api/mediaContracts.ts';
 import { readRows, transaction } from './storage.ts';
@@ -89,7 +94,9 @@ export function validateBackup(data: Backup): void {
     validateSession(item, index);
   });
   ensure(
-    (data.dashboard_cards?.category_ids ?? []).every((id) => index.categories.has(id)),
+    (data.dashboard_cards?.cards ?? []).every(
+      (card) => card.kind === 'metric' || index.categories.has(card.category_id),
+    ),
     'Категория карточки не найдена',
   );
   validateMedia(data.media);
@@ -109,7 +116,7 @@ export function restoreBackup(db: DatabaseSync, store: BackupMediaStore, data: B
     data.sessions.forEach((item) => {
       insertSession(db, item);
     });
-    writeDashboardCards(db, data.dashboard_cards ?? { category_ids: [] });
+    writeDashboardCards(db, data.dashboard_cards ?? defaultDashboardCards());
     restoreTimerGroups(db, data.timer_groups ?? []);
     data.media.forEach((item) => store.restore(item));
   });

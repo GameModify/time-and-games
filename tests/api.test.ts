@@ -1,4 +1,4 @@
-import type { Backup, Game, Session } from '../src/shared/api/contracts.ts';
+import type { Backup, Game, Session, DashboardCards } from '../src/shared/api/contracts.ts';
 import type { GameInput } from '../src/shared/api/inputContracts.ts';
 import type { Media, MediaInput } from '../src/shared/api/mediaContracts.ts';
 import { mediaSchema } from '../src/shared/api/mediaContracts.ts';
@@ -7,6 +7,7 @@ import type { ZodType } from 'zod';
 import {
   bootstrapSchema,
   dashboardCardsSchema,
+  defaultDashboardCards,
   backupSchema,
   sessionSchema,
   timerSchema,
@@ -425,9 +426,14 @@ void test('structured website and project metadata survives backup restoration a
   );
 });
 
-const chosenCards = { category_ids: ['fun-movies', 'fun-video'] };
+const chosenCards: DashboardCards = {
+  cards: [
+    { kind: 'category', category_id: 'fun-movies' },
+    { kind: 'category', category_id: 'fun-video' },
+  ],
+};
 void test('dashboard cards preserve selection and order across API restart and backup restore', async () => {
-  assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data.category_ids, []);
+  assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data, defaultDashboardCards());
   assert.equal((await call('/dashboard-cards', 'PATCH', chosenCards)).status, 200);
   assert.deepEqual((await read(bootstrapSchema, '/bootstrap')).data.dashboard_cards, chosenCards);
   const backup = (await read(backupSchema, '/export')).data;
@@ -435,7 +441,7 @@ void test('dashboard cards preserve selection and order across API restart and b
   await shutdown();
   await launch();
   assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data, chosenCards);
-  await call('/dashboard-cards', 'PATCH', { category_ids: [] });
+  await call('/dashboard-cards', 'PATCH', { cards: [] });
   assert.equal((await call('/import-backup', 'POST', backup)).status, 200);
   assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data, chosenCards);
 });
@@ -460,17 +466,35 @@ void test('backup card references are validated and legacy backups restore with 
   assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data, chosenCards);
   const legacy = { ...backup, dashboard_cards: undefined };
   assert.equal((await call('/import-backup', 'POST', legacy)).status, 200);
-  assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data.category_ids, []);
+  assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data, defaultDashboardCards());
   assert.deepEqual((await read(backupSchema, '/export')).data.sessions, backup.sessions);
 });
 void test('category deletion and data reset remove related custom dashboard cards', async () => {
   const category = (await call('/categories', 'POST', { name: 'Card category', group_name: 'Test' }))
     .data;
   const { id } = z.object({ id: z.string() }).parse(category);
-  await call('/dashboard-cards', 'PATCH', { category_ids: [id] });
+  await call('/dashboard-cards', 'PATCH', { cards: [{ kind: 'category', category_id: id }] });
   assert.equal((await call('/categories/' + id, 'DELETE')).status, 200);
-  assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data.category_ids, []);
+  assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data.cards, []);
   await call('/dashboard-cards', 'PATCH', chosenCards);
   assert.equal((await call('/reset', 'POST', { confirmation: 'СБРОСИТЬ' })).status, 200);
-  assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data.category_ids, []);
+  assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data, defaultDashboardCards());
+});
+
+void test('all dashboard cards can stay hidden across restart and backup restore', async () => {
+  assert.equal((await call('/dashboard-cards', 'PATCH', { cards: [] })).status, 200);
+  const backup = (await read(backupSchema, '/export')).data;
+  await shutdown();
+  await launch();
+  assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data.cards, []);
+  await call('/dashboard-cards', 'PATCH', defaultDashboardCards());
+  assert.equal((await call('/import-backup', 'POST', backup)).status, 200);
+  assert.deepEqual((await read(bootstrapSchema, '/bootstrap')).data.dashboard_cards.cards, []);
+});
+void test('dashboard API rejects duplicate built-ins and the games category alias', async () => {
+  const games = { kind: 'metric', metric: 'games' };
+  const alias = { kind: 'category', category_id: 'fun-games' };
+  for (const cards of [[games, games], [games, alias], [{ kind: 'metric', metric: 'missing' }]])
+    assert.equal((await call('/dashboard-cards', 'PATCH', { cards })).status, 400);
+  assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data.cards, []);
 });
