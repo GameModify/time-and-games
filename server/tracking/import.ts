@@ -70,6 +70,6 @@ function insertRange(
   category: string,
 ): void {
   const session = newSession(sessionPlan(db, intervalInput(db, item, range, category)), category);
-  insertSession(db, session);
+  insertSession(db, { ...session, tracking_context: { website: item.website, project: item.project } });
   linkAutomatic(db, item, category, session.id);
 }

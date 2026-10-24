@@ -18,6 +18,8 @@ const emit = defineEmits<{ add: []; save: []; folder: [] }>();
         >Проверять<select v-model="rule.field">
           <option value="app">Приложение</option>
           <option value="host">Сайт</option>
+          <option value="media_creator">Канал YouTube (/&#64;channel или /channel/ID)</option>
+          <option value="media_id">ID видео YouTube</option>
           <option value="url">Адрес страницы</option>
           <option value="title">Заголовок</option>
           <option value="kind">Тип события: focus / media / voice</option>
@@ -36,6 +38,20 @@ const emit = defineEmits<{ add: []; save: []; folder: [] }>();
       /></label>
       <label
         >Метка занятия<input v-model="rule.activity" maxlength="80" placeholder="Например, coding"
+      /></label>
+      <label
+        >События<select v-model="rule.scope">
+          <option :value="undefined">Все</option>
+          <option value="focus">Активное окно или вкладка</option>
+          <option value="media">Воспроизведение</option>
+          <option value="voice">Голосовой канал</option>
+        </select></label
+      >
+      <label
+        >Проект<input
+          :value="rule.project"
+          maxlength="100"
+          @input="rule.project = ($event.target as HTMLInputElement).value.trim() || undefined"
       /></label>
       <label>Приоритет<input v-model.number="rule.priority" type="number" min="0" max="1000" /></label>
       <CheckboxField v-model="rule.enabled" label="Включено" />

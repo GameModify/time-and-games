@@ -30,7 +30,13 @@ export const gameSchema = z.object({
   tracked_minutes: z.number().optional(),
   total_minutes: z.number().optional(),
 });
+export const sessionContextSchema = z.object({
+  website: z.string().max(253).optional(),
+  project: z.string().max(100).optional(),
+});
+export type SessionContext = z.infer<typeof sessionContextSchema>;
 export const sessionSchema = z.object({
+  tracking_context: sessionContextSchema.optional(),
   tracking_live: z.boolean().optional(),
   group_id: z.string().optional(),
   id: z.string(),

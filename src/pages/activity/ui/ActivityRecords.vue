@@ -19,7 +19,10 @@ function label(segments: Session[]): string {
   <div class="grouped-records">
     <details v-for="group in groups" :key="group.id" class="activity-record">
       <summary>
-        <strong>{{ label(group.segments) }}</strong
+        <strong
+          ><small v-if="group.segments[0]?.tracking_context?.project"
+            >{{ group.segments[0].tracking_context.project }} · </small
+          >{{ label(group.segments) }}</strong
         ><span>{{ clock(group.start) }} - {{ clock(group.end) }}</span
         ><b>{{ duration(group.elapsed, true) }}</b
         ><small v-if="group.paused">Перерывы: {{ duration(group.paused, true) }}</small

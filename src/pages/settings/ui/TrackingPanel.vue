@@ -3,6 +3,7 @@ import { Activity, RefreshCw } from 'lucide-vue-next';
 import type { Category } from '../../../shared/api/contracts.ts';
 import CheckboxField from '../../../shared/ui/CheckboxField.vue';
 import TrackingInboxRow from './TrackingInboxRow.vue';
+import WorkRules from './WorkRules.vue';
 import TrackingRules from './TrackingRules.vue';
 import { useTracking } from '../model/useTracking.ts';
 defineProps<{ categories: Category[] }>();
@@ -56,7 +57,8 @@ const { model, actions } = useTracking();
         <p class="muted">
           Например: coding → Кодинг, projects → Проекты, communication → Общение, video → YouTube /
           Видео. Неизвестные занятия остаются на проверке. Для папки научных документов используй метку
-          science, для остальных документов documents, для игр games.
+          science, для остальных документов documents, для игр games. Обычные сайты используют web и по
+          умолчанию не относятся к рабочему времени.
         </p>
         <div v-for="(mapping, index) in model.form.mappings" :key="index" class="tracking-mapping">
           <label>Метка<input v-model="mapping.activity" maxlength="80" placeholder="coding" /></label
@@ -109,7 +111,8 @@ const { model, actions } = useTracking();
           >Chrome:
           {{
             model.state.status.browser_at && Date.now() - model.state.status.browser_at < 30000
-              ? 'события поступают'
+              ? 'события поступают' +
+                (model.state.status.browser_version ? ' · ' + model.state.status.browser_version : '')
               : 'ожидаем расширение'
           }}</span
         ><span v-if="model.state.status.voice"
@@ -131,6 +134,15 @@ const { model, actions } = useTracking();
         </button></template
       >
     </div>
+    <WorkRules
+      v-if="model.state?.connected"
+      v-model="model.rules"
+      :busy="model.busy"
+      :status="model.state.status"
+      :categories="categories"
+      :mappings="model.form.mappings"
+      @save="actions.saveRules"
+    />
     <TrackingRules
       v-if="model.state?.connected"
       v-model="model.rules"

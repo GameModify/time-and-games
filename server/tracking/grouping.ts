@@ -10,7 +10,15 @@ export function automaticGroup(item: TrackingInboxItem, category: string): strin
     'auto:' +
     createHash('sha256')
       .update(
-        [item.device_id, item.channel, day, category, item.resource_id ?? item.title].join('\u001f'),
+        [
+          item.device_id,
+          item.channel,
+          day,
+          category,
+          item.project
+            ? item.project + ':' + (item.resource_id ?? item.title)
+            : (item.resource_id ?? item.title),
+        ].join('\u001f'),
       )
       .digest('hex')
   );

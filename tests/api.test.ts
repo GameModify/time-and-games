@@ -400,3 +400,26 @@ async function assertInvalidTimerBackup(backup: Backup) {
   };
   assert.equal((await call('/import-backup', 'POST', invalid)).status, 400);
 }
+
+async function contextBackup(): Promise<Backup> {
+  const backup = (await read(backupSchema, '/export')).data;
+  const session = required(backup.sessions[0]);
+  session.tracking_context = { website: 'research.example', project: 'Thesis' };
+  return backup;
+}
+void test('structured website and project metadata survives backup restoration and restart', async () => {
+  const backup = await contextBackup(),
+    context = backup.sessions[0]?.tracking_context;
+  assert.equal((await call('/import-backup', 'POST', backup)).status, 200);
+  await shutdown();
+  await launch();
+  const restored = (await read(backupSchema, '/export')).data;
+  assert.deepEqual(restored.sessions[0]?.tracking_context, context);
+  const sessions = (
+    await read(sessionSchema.array(), '/sessions?from=1&to=' + String(Date.now() + 86400000))
+  ).data;
+  assert.deepEqual(
+    sessions.find((item) => item.id === backup.sessions[0]?.id)?.tracking_context,
+    context,
+  );
+});

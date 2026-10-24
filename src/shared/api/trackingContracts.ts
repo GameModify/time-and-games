@@ -40,6 +40,10 @@ export const foregroundSchema = z.object({
   resource_id: z.string().optional(),
 });
 export const trackerStatusSchema = z.object({
+  foreground_rule: z
+    .object({ name: z.string(), activity: z.string(), project: z.string().optional() })
+    .nullable()
+    .optional(),
   assistant: foregroundSchema.nullable().optional(),
   game: foregroundSchema.nullable().optional(),
   foreground: foregroundSchema.nullable().optional(),
@@ -54,8 +58,11 @@ export const trackerStatusSchema = z.object({
   desktop_error: z.boolean(),
   desktop_at: z.number().nullable(),
   browser_at: z.number().nullable(),
+  browser_version: z.string().nullable().optional(),
 });
 export const trackerIntervalSchema = z.object({
+  website: z.string().max(253).optional(),
+  project: z.string().max(100).optional(),
   app: z.string().optional(),
   resource_id: z.string().optional(),
   resource_kind: z.enum(['app', 'document', 'game', 'voice']).optional(),
@@ -100,10 +107,12 @@ export const trackerRuleSchema = z
     id: z.uuid(),
     name: z.string().trim().min(1).max(100),
     enabled: z.boolean(),
-    field: z.enum(['app', 'title', 'url', 'host', 'kind', 'resource_id']),
+    field: z.enum(['app', 'title', 'url', 'host', 'kind', 'resource_id', 'media_creator', 'media_id']),
     operator: z.enum(['equals', 'contains', 'within']),
     value: z.string().trim().min(1).max(200),
     activity: z.string().trim().min(1).max(80),
+    scope: z.enum(['focus', 'media', 'voice']).optional(),
+    project: z.string().trim().min(1).max(100).optional(),
     priority: z.number().int().min(0).max(1000),
   })
   .refine(

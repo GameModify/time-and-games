@@ -1,3 +1,4 @@
+import { withSessionContext } from '../session-context.ts';
 import { automaticGroup, withGroups } from './grouping.ts';
 import { intervalCategory, intervalGame } from './bindings.ts';
 import type { DatabaseSync } from 'node:sqlite';
@@ -22,6 +23,7 @@ export function liveSessions(db: DatabaseSync): Session[] {
       note: '',
       created_at: item.start_at,
       tracking_live: true,
+      tracking_context: { website: item.website, project: item.project },
     }));
   });
 }
@@ -33,5 +35,7 @@ export function rangeSessions(db: DatabaseSync, from: number, to: number): Sessi
     [to, from],
   );
   const live = liveSessions(db).filter((item) => item.start_at < to && (item.end_at ?? 0) > from);
-  return [...withGroups(db, saved), ...live].sort((a, b) => b.start_at - a.start_at);
+  return [...withSessionContext(db, withGroups(db, saved)), ...live].sort(
+    (a, b) => b.start_at - a.start_at,
+  );
 }

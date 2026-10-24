@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { workingApplication } from '../model/workContext.ts';
+import WorkTracking from './WorkTracking.vue';
+import type { Category } from '../../../shared/api/contracts.ts';
 import GameTracking from './GameTracking.vue';
 import AssistantTracking from './AssistantTracking.vue';
 import GameCandidate from './GameCandidate.vue';
 import { Pause, Play, Radio } from 'lucide-vue-next';
 import { useAutomaticTracking } from '../model/useAutomaticTracking.ts';
-const props = defineProps<{ now: number }>();
+const props = defineProps<{ now: number; categories: Category[] }>();
 const state = useAutomaticTracking();
+const work = computed(() =>
+  workingApplication(state.value?.status, state.value?.settings, props.categories, props.now),
+);
 const playback = computed(
   () =>
     state.value?.status?.playback.filter(
@@ -58,6 +64,13 @@ function position(value?: number): string {
       :status="state.status"
       :now="now"
     />
+    <WorkTracking
+      v-if="state.connected && !state.status?.paused"
+      :status="state.status"
+      :settings="state.settings"
+      :categories="categories"
+      :now="now"
+    />
     <GameCandidate v-if="state.connected && !state.status?.paused" :status="state.status" :now="now" />
     <GameTracking v-if="state.connected && !state.status?.paused" :status="state.status" :now="now" />
     <div v-if="state.connected && !state.status?.paused && foreground" class="automatic-item">
@@ -85,6 +98,7 @@ function position(value?: number): string {
         !playback.length &&
         !state.status?.assistant &&
         !foreground &&
+        !work &&
         !state.status?.game &&
         state.status?.voice?.state !== 'connected'
       "

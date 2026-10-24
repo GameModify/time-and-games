@@ -1,3 +1,4 @@
+import { saveSessionContext } from './session-context.ts';
 import { randomUUID } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Session } from '../src/shared/api/contracts.ts';
@@ -88,4 +89,5 @@ export function insertSession(db: DatabaseSync, session: Session): void {
   db.prepare(
     'INSERT INTO sessions (id,category_id,game_id,title,note,start_at,end_at,created_at) VALUES (@id,@category_id,@game_id,@title,@note,@start_at,@end_at,@created_at)',
   ).run({ ...sessionUpdateBindings(session), created_at: session.created_at });
+  saveSessionContext(db, session);
 }

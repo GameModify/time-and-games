@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WebsitesSummary from './WebsitesSummary.vue';
 import type { WorkspaceView } from '../../../features/workspace/index.ts';
 import type { EditorView } from '../../../features/record-editor/index.ts';
 
@@ -157,7 +158,7 @@ const donutGradient = computed(() => {
       </button>
     </div>
     <TimerCards :model="model" @edit="editSession" />
-    <AutomaticTracking :now="now" />
+    <AutomaticTracking :now="now" :categories="categories" />
   </section>
 
   <div class="dashboard-columns" :class="{ 'analytics-columns': page === 'analytics' }">
@@ -219,6 +220,13 @@ const donutGradient = computed(() => {
         </div>
       </div>
 
+      <WebsitesSummary
+        v-if="page === 'dashboard' && view === 'day'"
+        :sessions="daySessions"
+        :categories="categories"
+        :now="now"
+        :date="date"
+      />
       <PeriodChart
         v-if="page === 'analytics'"
         :buckets="chartBuckets"

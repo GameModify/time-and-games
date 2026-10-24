@@ -1,3 +1,4 @@
+import { setupWebTracking } from './web-setup.ts';
 import { gameApplicationRules } from './game-app.ts';
 import { gameApplicationSchema } from '../../src/shared/api/trackingContracts.ts';
 import { backfillGroups } from './backfill.ts';
@@ -26,6 +27,7 @@ function connectionRoutes(app: Express, controller: TrackingController): void {
     ensure(!controller.syncing, 'Подожди окончания синхронизации', 409);
     ensure(!input.enabled || Boolean(input.token ?? configuration(db).token), 'Укажи ключ подключения');
     updateConfiguration(db, input);
+    setupWebTracking(db);
     await controller.sync();
     res.json(controller.state());
   });
@@ -60,6 +62,7 @@ function ruleRoutes(app: Express, db: DatabaseSync): void {
 }
 export function registerTracking(app: Express, db: DatabaseSync): () => void {
   initializeTracking(db);
+  setupWebTracking(db);
   backfillGroups(db);
   const controller = new TrackingController(db);
   connectionRoutes(app, controller);

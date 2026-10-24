@@ -5,3 +5,5 @@ export { activityGroups } from './lib/groups.ts';
 
 export { activityTracks, trackRange, trackTicks, trackPercent, trackGeometry } from './lib/tracks.ts';
 export type { ActivityTrack, TrackSegment, TrackRange } from './lib/tracks.ts';
+
+export { websiteUsage } from './lib/websites.ts';
