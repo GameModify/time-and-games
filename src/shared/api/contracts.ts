@@ -31,6 +31,9 @@ export const gameSchema = z.object({
   total_minutes: z.number().optional(),
 });
 export const sessionContextSchema = z.object({
+  app: z.string().max(200).optional(),
+  media_creator: z.string().max(200).optional(),
+  media_id: z.string().max(100).optional(),
   website: z.string().max(253).optional(),
   project: z.string().max(100).optional(),
 });

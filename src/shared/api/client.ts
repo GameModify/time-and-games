@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type {
+  Classification,
   GameApplication,
   TrackingConnection,
   TrackingImport,
@@ -16,6 +17,7 @@ import type {
   SettingsWriteDto,
 } from './inputContracts.ts';
 export type WriteDto =
+  | Classification
   | SessionWriteDto
   | CategoryWriteDto
   | GameWriteDto

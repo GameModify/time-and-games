@@ -1,3 +1,5 @@
+import { setupYouTube } from './youtube-setup.ts';
+import { classificationRoutes } from './classification.ts';
 import { setupWebTracking } from './web-setup.ts';
 import { gameApplicationRules } from './game-app.ts';
 import { gameApplicationSchema } from '../../src/shared/api/trackingContracts.ts';
@@ -28,6 +30,7 @@ function connectionRoutes(app: Express, controller: TrackingController): void {
     ensure(!input.enabled || Boolean(input.token ?? configuration(db).token), 'Укажи ключ подключения');
     updateConfiguration(db, input);
     setupWebTracking(db);
+    setupYouTube(db);
     await controller.sync();
     res.json(controller.state());
   });
@@ -63,12 +66,14 @@ function ruleRoutes(app: Express, db: DatabaseSync): void {
 export function registerTracking(app: Express, db: DatabaseSync): () => void {
   initializeTracking(db);
   setupWebTracking(db);
+  setupYouTube(db);
   backfillGroups(db);
   const controller = new TrackingController(db);
   connectionRoutes(app, controller);
   importRoutes(app, db);
   ruleRoutes(app, db);
   gameRoutes(app, db);
+  classificationRoutes(app, db);
   const timer = setInterval(() => {
     void controller.sync();
   }, 5000);

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import ClassificationDialog from './ClassificationDialog.vue';
 import type { Session } from '../../../shared/api/contracts.ts';
 import type { WorkspaceView } from '../../../features/workspace/index.ts';
 import { activityGroups } from '../../../entities/activity/index.ts';
@@ -7,6 +8,12 @@ import { duration } from '../../../shared/lib/date.ts';
 import { clock } from '../../../shared/lib/format.ts';
 const props = defineProps<{ sessions: Session[]; model: WorkspaceView }>();
 defineEmits<{ edit: [session: Session] }>();
+const selected = ref<Session | null>(null);
+async function classified(): Promise<void> {
+  selected.value = null;
+  await props.model.load();
+  props.model.flash('Категория сохранена');
+}
 const groups = computed(() => activityGroups(props.sessions, props.model.now));
 function label(segments: Session[]): string {
   const first = segments[0];
@@ -29,22 +36,35 @@ function label(segments: Session[]): string {
         ><small v-else>Без перерывов</small>
       </summary>
       <div class="record-segments">
-        <button
-          v-for="segment in group.segments"
-          :key="segment.id"
-          class="button secondary segment"
-          @click="$emit('edit', segment)"
-        >
-          <span
-            >{{ clock(segment.start_at) }} -
-            {{ segment.end_at === null ? 'сейчас' : clock(segment.end_at) }} ·
-            {{ duration((segment.end_at ?? model.now) - segment.start_at, true) }}</span
-          ><span v-if="segment.note">{{ segment.note }}</span
-          ><small>{{ segment.tracking_live ? 'Текущий отрезок' : 'Изменить отрезок' }}</small>
-        </button>
+        <div v-for="segment in group.segments" :key="segment.id" class="segment-actions">
+          <button class="button secondary segment" @click="$emit('edit', segment)">
+            <span
+              >{{ clock(segment.start_at) }} -
+              {{ segment.end_at === null ? 'сейчас' : clock(segment.end_at) }} ·
+              {{ duration((segment.end_at ?? model.now) - segment.start_at, true) }}</span
+            ><span v-if="segment.note">{{ segment.note }}</span
+            ><small>{{ segment.tracking_live ? 'Текущий отрезок' : 'Изменить отрезок' }}</small>
+          </button>
+          <button
+            v-if="!segment.tracking_live && segment.end_at !== null"
+            class="button secondary classify"
+            @click="selected = segment"
+          >
+            Категория
+          </button>
+          <small v-else class="muted">Категорию записи можно изменить после завершения отрезка</small>
+        </div>
       </div>
     </details>
   </div>
+  <ClassificationDialog
+    v-if="selected"
+    :key="selected.id"
+    :session="selected"
+    :categories="model.categories"
+    @close="selected = null"
+    @saved="classified"
+  />
 </template>
 <style scoped>
 .grouped-records {
@@ -90,6 +110,17 @@ b {
   display: grid;
   gap: 8px;
   padding: 0 16px 16px;
+}
+.segment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.segment-actions > .segment {
+  flex: 1;
+}
+.classify {
+  align-self: start;
 }
 .segment {
   justify-content: space-between;

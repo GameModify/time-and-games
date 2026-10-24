@@ -35,6 +35,7 @@ function neutralWebsite(session: Session, categories: Category[]): boolean {
   return Boolean(
     context?.website &&
     !context.project &&
+    !context.media_id &&
     !categories.find((category) => category.id === session.category_id)?.is_work,
   );
 }

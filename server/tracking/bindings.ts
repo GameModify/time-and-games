@@ -20,6 +20,7 @@ export function intervalCategory(
   item: TrackingInboxItem,
   mappings: TrackingConnection['mappings'],
 ): string | undefined {
+  if (item.activity?.startsWith('tng:')) return item.activity.slice(4);
   const row = item.resource_id
     ? db
         .prepare('SELECT category_id FROM tracking_bindings WHERE source=? AND resource_id=?')

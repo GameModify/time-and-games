@@ -126,6 +126,7 @@ function inboxFilter(activities?: string[]): string {
   return (
     ' AND (' +
     mapped +
+    "json_extract(value,'$.activity') LIKE 'tng:%' OR " +
     "EXISTS (SELECT 1 FROM tracking_bindings b WHERE b.resource_id=json_extract(value,'$.resource_id') AND b.source=json_extract(value,'$.source')))"
   );
 }

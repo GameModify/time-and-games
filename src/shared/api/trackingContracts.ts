@@ -61,6 +61,8 @@ export const trackerStatusSchema = z.object({
   browser_version: z.string().nullable().optional(),
 });
 export const trackerIntervalSchema = z.object({
+  media_creator: z.string().max(200).optional(),
+  media_id: z.string().max(100).optional(),
   website: z.string().max(253).optional(),
   project: z.string().max(100).optional(),
   app: z.string().optional(),
@@ -144,3 +146,19 @@ export const gameApplicationSchema = z.object({
   title: z.string().trim().min(1).max(100),
 });
 export type GameApplication = z.infer<typeof gameApplicationSchema>;
+
+export const contentLabelSchema = z.object({
+  aliases: z.string().min(1).max(80).array().max(100).default([]),
+  id: z.string().min(1).max(80),
+  name: z.string().min(1).max(100),
+  activity: z.string().min(1).max(80),
+  color: z.string().regex(/^#[a-f0-9]{6}$/i),
+});
+export type ContentLabel = z.infer<typeof contentLabelSchema>;
+export const classificationSchema = z.object({
+  session_id: z.string().min(1).max(160),
+  category_id: z.string().min(1).max(80),
+  scope: z.enum(['record', 'video', 'channel', 'app', 'site']),
+  project: z.string().trim().max(100).default(''),
+});
+export type Classification = z.infer<typeof classificationSchema>;

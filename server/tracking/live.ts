@@ -1,3 +1,4 @@
+import { trackingContext } from './context.ts';
 import { withSessionContext } from '../session-context.ts';
 import { automaticGroup, withGroups } from './grouping.ts';
 import { intervalCategory, intervalGame } from './bindings.ts';
@@ -23,7 +24,7 @@ export function liveSessions(db: DatabaseSync): Session[] {
       note: '',
       created_at: item.start_at,
       tracking_live: true,
-      tracking_context: { website: item.website, project: item.project },
+      tracking_context: trackingContext(item),
     }));
   });
 }

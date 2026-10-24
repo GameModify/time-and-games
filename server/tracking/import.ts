@@ -1,3 +1,4 @@
+import { trackingContext } from './context.ts';
 import { linkAutomatic } from './grouping.ts';
 import { rememberResource, intervalGame } from './bindings.ts';
 import type { DatabaseSync } from 'node:sqlite';
@@ -70,6 +71,6 @@ function insertRange(
   category: string,
 ): void {
   const session = newSession(sessionPlan(db, intervalInput(db, item, range, category)), category);
-  insertSession(db, { ...session, tracking_context: { website: item.website, project: item.project } });
+  insertSession(db, { ...session, tracking_context: trackingContext(item) });
   linkAutomatic(db, item, category, session.id);
 }

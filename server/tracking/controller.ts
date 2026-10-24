@@ -1,3 +1,5 @@
+import { categoryLabels } from './labels.ts';
+import { publishLabels } from './http.ts';
 import { intervalCategory } from './bindings.ts';
 import type { DatabaseSync } from 'node:sqlite';
 import { trackingSettingsSchema } from '../../src/shared/api/trackingContracts.ts';
@@ -9,6 +11,7 @@ export class TrackingController {
   db: DatabaseSync;
   status: TrackerStatus | null = null;
   error = '';
+  labelRevision = '';
   syncing: Promise<number> | null = null;
   constructor(db: DatabaseSync) {
     this.db = db;
@@ -60,6 +63,21 @@ export class TrackingController {
     }
     return added;
   }
+  async publishCategories(): Promise<void> {
+    const labels = categoryLabels(this.db);
+    const revision = labels
+      .map((label) => [label.id, label.name, label.color, ...label.aliases].join(':'))
+      .join('|');
+    const targetRevision =
+      configuration(this.db).endpoint + ':' + (this.status?.device_id ?? '') + ':' + revision;
+    if (targetRevision === this.labelRevision) return;
+    try {
+      await publishLabels(configuration(this.db), labels);
+      this.labelRevision = targetRevision;
+    } catch {
+      // Older tracker versions can continue importing without the optional category catalog.
+    }
+  }
   disabled(): boolean {
     if (configuration(this.db).enabled) return false;
     this.status = null;
@@ -70,6 +88,7 @@ export class TrackingController {
     if (this.disabled()) return 0;
     try {
       this.status = await readStatus(configuration(this.db));
+      await this.publishCategories();
       for (let count = 0; count < 5; count++) {
         if (!(await this.fetchPage())) break;
       }
