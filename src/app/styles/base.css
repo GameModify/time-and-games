@@ -37,7 +37,7 @@
     scrollbar-color: auto;
   }
 }
-:root:has(.modal-backdrop) {
+:root:has(.modal-backdrop, .timeline-backdrop) {
   overflow: hidden;
 }
 body {

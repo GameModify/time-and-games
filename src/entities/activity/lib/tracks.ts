@@ -28,7 +28,7 @@ function daySegments(sessions: Session[], range: TrackRange, now: number): Track
     }))
     .filter((segment) => segment.end > segment.start);
 }
-function summarizeTrack(id: string, segments: TrackSegment[]): ActivityTrack {
+export function summarizeTrack(id: string, segments: TrackSegment[]): ActivityTrack {
   const first = segments[0];
   if (!first) throw new Error('A timeline track needs at least one segment');
   const start = Math.min(...segments.map((segment) => segment.start));

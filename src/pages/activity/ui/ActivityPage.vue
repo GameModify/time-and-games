@@ -238,6 +238,7 @@ const donutGradient = computed(() => {
         v-else-if="view === 'day' && display === 'timeline'"
         :sessions="daySessions"
         :categories="categories"
+        :games="model.games"
         :date="date"
         :now="now"
         @edit="editSession"
@@ -362,3 +363,9 @@ const donutGradient = computed(() => {
   </div>
   <LibraryHistory v-if="page === 'analytics'" :games="model.games" :media="model.media" />
 </template>
+
+<style scoped>
+.timeline-panel {
+  overflow: clip;
+}
+</style>
