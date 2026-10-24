@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { ChevronDown, ChevronUp } from 'lucide-vue-next';
+import type { TimelineOrder } from '../model/timelineSummary.ts';
 import type { CategoryLane, TrackRange } from '../../../entities/activity/index.ts';
 import { overviewTicks, trackPercent } from '../../../entities/activity/index.ts';
 import { duration, localDate } from '../../../shared/lib/date.ts';
@@ -10,8 +12,9 @@ const props = defineProps<{
   range: TrackRange;
   now: number;
   selected?: string;
+  order: TimelineOrder;
 }>();
-const emit = defineEmits<{ select: [id: string]; zoom: [range: TrackRange] }>();
+const emit = defineEmits<{ select: [id: string]; zoom: [range: TrackRange]; sort: [] }>();
 const { drag, skippedClick, down, move, up, cancel } = useTimelineDrag(
   () => props.range,
   (range) => {
@@ -52,7 +55,20 @@ function axisClock(value: number): string {
           {{ axisClock(tick) }}<small v-if="showDates">{{ shortDate(localDate(tick)) }}</small>
         </span>
       </div>
-      <span class="total-label">Учтено</span>
+      <button
+        class="total-label sort-total"
+        :aria-label="
+          order === 'desc' ? 'Учтено: сначала больше времени' : 'Учтено: сначала меньше времени'
+        "
+        :title="order === 'desc' ? 'Сначала больше времени' : 'Сначала меньше времени'"
+        @click="emit('sort')"
+      >
+        Учтено<component
+          :is="order === 'desc' ? ChevronDown : ChevronUp"
+          :size="14"
+          aria-hidden="true"
+        />
+      </button>
     </div>
     <div
       v-for="lane in lanes"
@@ -217,6 +233,16 @@ function axisClock(value: number): string {
 .total-label {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+.sort-total {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 6px 0;
+  background: transparent;
+  color: var(--accent-text);
+  font: inherit;
 }
 .total {
   font-size: 13px;

@@ -5,7 +5,6 @@ import type { Category, Session, Game } from '../../../shared/api/contracts.ts';
 import {
   activityTracks,
   activityTracksInRange,
-  recentHourOptions,
   tracksInRange,
   categoryLanes,
   currentActivities,
@@ -17,7 +16,10 @@ import {
 import type { ActivityTrack, TrackRange, RecentTrackHours } from '../../../entities/activity/index.ts';
 import { dayBounds, localDate } from '../../../shared/lib/date.ts';
 import { clock, shortDate } from '../../../shared/lib/format.ts';
+import { sortedLanes } from '../model/timelineSummary.ts';
+import type { TimelineOrder } from '../model/timelineSummary.ts';
 import CurrentActivities from './CurrentActivities.vue';
+import TimelinePeriodPicker from './TimelinePeriodPicker.vue';
 import TimelineOverview from './TimelineOverview.vue';
 import TimelineDetails from './TimelineDetails.vue';
 const props = defineProps<{
@@ -30,6 +32,7 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ edit: [session?: Session]; period: [hours: RecentTrackHours | null] }>();
 const selection = ref<TrackRange | null>(null);
+const order = ref<TimelineOrder>('desc');
 const selectedCurrent = ref(false);
 const selectedId = ref(''),
   selectedItem = ref(''),
@@ -54,7 +57,8 @@ const range = computed(() => selection.value ?? bounds.value);
 const windowLanes = computed(() =>
   categoryLanes(tracksInRange(tracks.value, range.value), props.categories),
 );
-const visible = computed(() => (expanded.value ? windowLanes.value : windowLanes.value.slice(0, 6)));
+const ordered = computed(() => sortedLanes(windowLanes.value, order.value));
+const visible = computed(() => (expanded.value ? ordered.value : ordered.value.slice(0, 6)));
 const selected = computed(() =>
   (selectedCurrent.value ? lanes.value : windowLanes.value).find((lane) => lane.id === selectedId.value),
 );
@@ -79,12 +83,6 @@ function reset(): void {
 function changeMode(hours: RecentTrackHours | null): void {
   selection.value = null;
   emit('period', hours);
-}
-function selectRecent(event: Event): void {
-  if (!(event.target instanceof HTMLSelectElement)) return;
-  const value = event.target.value;
-  const hours = recentHourOptions.find((option) => String(option) === value);
-  if (hours !== undefined) changeMode(hours);
 }
 function choose(id: string): void {
   selectedCurrent.value = false;
@@ -114,22 +112,7 @@ function edit(session: Session): void {
       @select="showCurrent"
     />
     <div class="overview-toolbar">
-      <div class="segmented period-picker" aria-label="Период на графике">
-        <button :class="{ active: hours === null && !selection }" @click="changeMode(null)">
-          Весь день
-        </button>
-        <select
-          aria-label="Последние часы"
-          :value="hours ?? ''"
-          :class="{ active: hours !== null && !selection }"
-          @change="selectRecent"
-        >
-          <option value="" disabled>Последние часы</option>
-          <option v-for="value in recentHourOptions" :key="value" :value="value">
-            Последние {{ value }} {{ value === 2 || value === 24 ? 'часа' : 'часов' }}
-          </option>
-        </select>
-      </div>
+      <TimelinePeriodPicker :hours="hours" :active="!selection" @period="changeMode" />
     </div>
     <div v-if="!windowLanes.length" class="track-empty">
       <Clock3 :size="28" /><strong>За этот период пока нет записей</strong
@@ -175,6 +158,8 @@ function edit(session: Session): void {
         :range="range"
         :now="now"
         :selected="selectedId"
+        :order="order"
+        @sort="order = order === 'desc' ? 'asc' : 'desc'"
         @select="choose"
         @zoom="selection = $event"
       />
@@ -210,25 +195,6 @@ function edit(session: Session): void {
   flex-wrap: wrap;
   gap: 16px;
   padding: 20px;
-}
-.period-picker {
-  flex-wrap: wrap;
-  max-width: 100%;
-}
-.period-picker select {
-  width: auto;
-  max-width: 100%;
-  min-height: 36px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  cursor: pointer;
-}
-.period-picker select.active {
-  background: var(--accent-surface);
-  color: var(--accent-text);
 }
 .range-toolbar {
   display: flex;

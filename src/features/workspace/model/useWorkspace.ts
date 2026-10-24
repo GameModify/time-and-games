@@ -28,12 +28,12 @@ import {
 import { api, readApi } from '../../../shared/api/client.ts';
 import { dayBounds, localDate, periodDays, shiftDate } from '../../../shared/lib/date.ts';
 import {
-  recentTrackRange,
   summarize,
   timelineLayout,
   activityBuckets,
   timelineRect,
 } from '../../../entities/activity/index.ts';
+import { overviewRange } from './overviewRange.ts';
 import type { RecentTrackHours } from '../../../entities/activity/index.ts';
 interface PlacedSession extends Session {
   start: number;
@@ -97,18 +97,24 @@ class WorkspaceController {
     dayBounds(this.days.value[0] ?? this.date.value)[0],
     dayBounds(this.days.value.at(-1) ?? this.date.value)[1],
   ]);
+  overviewRange = computed(() =>
+    overviewRange({
+      calendar: this.range.value,
+      hours: this.timelineHours.value,
+      now: this.now.value,
+      rolling:
+        this.page.value === 'dashboard' &&
+        this.view.value === 'day' &&
+        this.display.value === 'timeline',
+    }),
+  );
+  overviewStats = computed(() =>
+    summarize(this.sessions.value, this.categories.value, ...this.overviewRange.value, this.now.value),
+  );
   sessionRange = computed<[number, number]>(() => {
     const [from, to] = this.range.value;
-    const hours = this.timelineHours.value;
-    if (
-      this.page.value !== 'dashboard' ||
-      this.view.value !== 'day' ||
-      this.display.value !== 'timeline' ||
-      hours === null
-    )
-      return [from, to];
-    const recent = recentTrackRange(this.now.value, hours);
-    return [Math.min(from, recent.from), Math.max(to, recent.to)];
+    const [overviewFrom, overviewTo] = this.overviewRange.value;
+    return [Math.min(from, overviewFrom), Math.max(to, overviewTo)];
   });
   setTimelineHours = async (hours: RecentTrackHours | null) => {
     if (hours !== null && this.date.value !== localDate(this.now.value))
@@ -370,6 +376,7 @@ type WorkspaceControllerView = Pick<
   | 'days'
   | 'range'
   | 'stats'
+  | 'overviewStats'
   | 'todayStats'
   | 'groupNames'
   | 'activeIds'

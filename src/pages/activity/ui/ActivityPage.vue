@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { recentHoursLabel } from '../model/timelineSummary.ts';
 import WebsitesSummary from './WebsitesSummary.vue';
 import type { WorkspaceView } from '../../../features/workspace/index.ts';
 import type { EditorView } from '../../../features/record-editor/index.ts';
@@ -39,8 +40,6 @@ const {
   selected,
   now,
   busy,
-  stats,
-  todayStats,
   activeIds,
   trackedDays,
   chartBuckets,
@@ -59,12 +58,24 @@ const {
 } = toRefs(props.model);
 const { editSession, editGame } = toRefs(props.editor);
 const recordCount = computed(() => activityGroups(daySessions.value, now.value).length);
+const balance = computed(() => props.model.overviewStats);
+const balanceCategories = computed(() =>
+  balance.value.byCategory
+    .filter((category) => category.duration > 0)
+    .sort((a, b) => b.duration - a.duration),
+);
+const balancePeriod = computed(() => {
+  const recent = page.value === 'dashboard' && view.value === 'day' && display.value === 'timeline';
+  const hours = props.model.timelineHours;
+  if (recent && hours !== null) return recentHoursLabel(hours);
+  return view.value === 'day' ? 'За выбранный день' : 'За выбранный период';
+});
 const donutGradient = computed(() => {
   let cursor = 0;
-  const total = props.model.stats.categoryTotal;
+  const total = balance.value.categoryTotal;
   return total
     ? 'conic-gradient(' +
-        props.model.topCategories
+        balanceCategories.value
           .map((c) => {
             const start = cursor;
             cursor += (c.duration / total) * 100;
@@ -240,9 +251,7 @@ const donutGradient = computed(() => {
       <div class="panel-footer">
         <span
           ><span class="legend-dot purple-bg" />{{
-            view === 'day'
-              ? `За день учтено: ${duration(todayStats.total)}`
-              : `За период: ${duration(stats.total)}`
+            `${balancePeriod}, учтено: ${duration(balance.total)}`
           }}</span
         ><span>Общий итог учитывает одновременные занятия один раз</span>
       </div>
@@ -251,22 +260,30 @@ const donutGradient = computed(() => {
     <aside class="right-column">
       <section class="panel distribution-panel">
         <div class="section-heading">
-          <h2>Баланс времени</h2>
+          <div>
+            <h2>Баланс времени</h2>
+            <small class="balance-period">{{ balancePeriod }}</small>
+          </div>
           <BarChart3 :size="17" class="muted" />
         </div>
         <div class="donut-wrap">
           <div class="donut" :style="{ background: donutGradient }">
             <div>
-              <small>По занятиям</small><strong>{{ duration(stats.categoryTotal) }}</strong>
+              <small>По занятиям</small><strong>{{ duration(balance.categoryTotal) }}</strong>
             </div>
           </div>
         </div>
+        <div class="balance-total">
+          <span>Общее время</span><strong>{{ duration(balance.total) }}</strong>
+        </div>
         <div class="distribution-list">
-          <div v-for="c in topCategories.slice(0, 6)" :key="c.id">
+          <div v-for="c in balanceCategories.slice(0, 6)" :key="c.id">
             <span><i class="legend-dot" :style="{ background: c.color }" />{{ c.name }}</span
             ><b>{{ duration(c.duration) }}</b>
           </div>
-          <p v-if="!topCategories.length" class="muted">Здесь появится распределение твоих занятий.</p>
+          <p v-if="!balanceCategories.length" class="muted">
+            Здесь появится распределение твоих занятий.
+          </p>
         </div>
         <div class="subtle-note">
           Если занятия идут одновременно, время учитывается в каждой категории. В общем итоге оно
@@ -323,6 +340,18 @@ const donutGradient = computed(() => {
 </template>
 
 <style scoped>
+.balance-period {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+}
+.balance-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 20px 18px;
+  font-size: 14px;
+}
 .timeline-panel {
   overflow: clip;
 }
