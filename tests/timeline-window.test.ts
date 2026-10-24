@@ -9,6 +9,7 @@ import {
   shiftedTrackRange,
   overviewTicks,
   activityTracks,
+  activityTracksInRange,
 } from '../src/entities/activity/index.ts';
 import { date, start, end, minute, row } from './timeline-fixture.ts';
 const day = { from: start, to: end };
@@ -26,22 +27,27 @@ void test('zoom has a one-minute floor and panning never escapes the selected da
   assert.equal(range.to - range.from, (end - start) / 2);
   const minimal = { from: start, to: start + minute };
   assert.deepEqual(zoomTrackRange(minimal, start), minimal);
-  assert.deepEqual(shiftedTrackRange(range, date, 100), range);
-  const first = shiftedTrackRange(range, date, -100);
+  assert.deepEqual(shiftedTrackRange(range, day, 100), range);
+  const first = shiftedTrackRange(range, day, -100);
   assert.equal(first.from, start);
   assert.equal(first.to - first.from, range.to - range.from);
 });
-void test('recent mode follows the current date and the last activity on historical dates', () => {
-  const tracks = activityTracks([row('a', 180, 240)], date, end);
-  const current = recentTrackRange(date, start + 600 * minute, tracks);
-  assert.deepEqual(current, { from: start + 480 * minute, to: start + 600 * minute });
-  assert.deepEqual(recentTrackRange(date, end + minute, tracks), {
-    from: start + 120 * minute,
-    to: start + 240 * minute,
-  });
+void test('recent mode ends at now and includes yesterday immediately after midnight', () => {
+  const now = start + 6 * minute;
+  assert.deepEqual(recentTrackRange(now, 2), { from: start - 114 * minute, to: now });
+  assert.deepEqual(recentTrackRange(start, 2), { from: start - 120 * minute, to: start });
+});
+void test('all recent presets keep exact elapsed hours across date and month boundaries', () => {
+  const now = new Date('2026-11-01T00:06:00').getTime();
+  for (const hours of [2, 6, 8, 12, 24] as const) {
+    const range = recentTrackRange(now, hours);
+    assert.equal(range.to, now);
+    assert.equal(range.to - range.from, hours * 3600000);
+    assert.ok(range.from < new Date('2026-11-01T00:00:00').getTime());
+  }
 });
 void test('focusing a short record preserves its original bounds and adds context within the day', () => {
-  const focused = focusedTrackRange({ from: start, to: start + 5000 }, date);
+  const focused = focusedTrackRange({ from: start, to: start + 5000 }, day);
   assert.equal(focused.from, start);
   assert.equal(focused.to, start + 65000);
 });
@@ -64,4 +70,28 @@ void test('zoomed categories exclude unrelated history and clip totals without m
   assert.equal(clipped[0].segments[0]?.session, source);
   assert.equal(source.start_at, start);
   assert.equal(source.end_at, start + 60 * minute);
+});
+
+void test('rolling tracks retain yesterday and clip both ends without changing source records', () => {
+  const now = start + 6 * minute;
+  const range = recentTrackRange(now, 2);
+  const yesterday = row('yesterday', -180, -60);
+  const ongoing = row('ongoing', -30, null);
+  const tracks = activityTracksInRange([yesterday, ongoing, row('old', -200, -150)], range, now);
+  assert.equal(tracks.length, 2);
+  assert.equal(tracks[0]?.start, range.from);
+  assert.equal(tracks[0].elapsed, 54 * minute);
+  assert.equal(tracks[1]?.end, now);
+  assert.equal(tracks[1].elapsed, 36 * minute);
+  assert.equal(tracks[0].segments[0]?.session, yesterday);
+  assert.equal(yesterday.start_at, start - 180 * minute);
+});
+void test('rolling zoom and focus can cross midnight while remaining inside the selected period', () => {
+  const now = start + 6 * minute;
+  const bounds = recentTrackRange(now, 24);
+  const selected = selectedTrackRange(bounds, 0.9, 1);
+  const previous = shiftedTrackRange(selected, bounds, -1);
+  assert.ok(previous.from < start);
+  assert.equal(shiftedTrackRange(selected, bounds, -100).from, bounds.from);
+  assert.equal(focusedTrackRange({ from: start - minute, to: now }, bounds).to, now);
 });

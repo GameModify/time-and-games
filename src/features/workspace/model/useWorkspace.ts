@@ -22,11 +22,13 @@ import { bootstrapSchema, sessionSchema } from '../../../shared/api/contracts.ts
 import { api, readApi } from '../../../shared/api/client.ts';
 import { dayBounds, localDate, periodDays, shiftDate } from '../../../shared/lib/date.ts';
 import {
+  recentTrackRange,
   summarize,
   timelineLayout,
   activityBuckets,
   timelineRect,
 } from '../../../entities/activity/index.ts';
+import type { RecentTrackHours } from '../../../entities/activity/index.ts';
 interface PlacedSession extends Session {
   start: number;
   end: number;
@@ -49,6 +51,7 @@ class WorkspaceController {
   registerNavigationWatch = () => {
     watch(this.navigation, (state) => {
       if (state.page === 'dashboard' || state.page === 'analytics') {
+        if (this.date.value !== state.date) this.timelineHours.value = null;
         this.date.value = state.date;
         this.view.value = state.view;
         this.display.value = state.display;
@@ -63,6 +66,7 @@ class WorkspaceController {
   active = ref<Timer[]>([]);
   paused = ref<PausedTimer[]>([]);
   selected = ref<string[]>([]);
+  timelineHours = ref<RecentTrackHours | null>(null);
   now = ref(Date.now());
   loading = ref(true);
   busy = ref(false);
@@ -82,6 +86,25 @@ class WorkspaceController {
     dayBounds(this.days.value[0] ?? this.date.value)[0],
     dayBounds(this.days.value.at(-1) ?? this.date.value)[1],
   ]);
+  sessionRange = computed<[number, number]>(() => {
+    const [from, to] = this.range.value;
+    const hours = this.timelineHours.value;
+    if (
+      this.page.value !== 'dashboard' ||
+      this.view.value !== 'day' ||
+      this.display.value !== 'timeline' ||
+      hours === null
+    )
+      return [from, to];
+    const recent = recentTrackRange(this.now.value, hours);
+    return [Math.min(from, recent.from), Math.max(to, recent.to)];
+  });
+  setTimelineHours = async (hours: RecentTrackHours | null) => {
+    if (hours !== null && this.date.value !== localDate(this.now.value))
+      await this.changeDate(localDate(this.now.value));
+    this.timelineHours.value = hours;
+    await this.load();
+  };
   stats = computed(() =>
     summarize(this.sessions.value, this.categories.value, ...this.range.value, this.now.value),
   );
@@ -164,7 +187,7 @@ class WorkspaceController {
       const [bootstrap, rows] = await Promise.all([
         readApi('/bootstrap', bootstrapSchema),
         readApi(
-          `/sessions?from=${this.range.value[0]}&to=${this.range.value[1]}`,
+          `/sessions?from=${this.sessionRange.value[0]}&to=${this.sessionRange.value[1]}`,
           sessionSchema.array(),
         ),
       ]);
@@ -317,6 +340,8 @@ type WorkspaceControllerView = Pick<
   | 'games'
   | 'media'
   | 'sessions'
+  | 'timelineHours'
+  | 'setTimelineHours'
   | 'active'
   | 'paused'
   | 'pauseTimer'

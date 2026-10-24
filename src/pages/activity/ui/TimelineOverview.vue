@@ -3,12 +3,11 @@ import { computed } from 'vue';
 import type { CategoryLane, TrackRange } from '../../../entities/activity/index.ts';
 import { overviewTicks, trackPercent } from '../../../entities/activity/index.ts';
 import { duration, localDate } from '../../../shared/lib/date.ts';
-import { clock } from '../../../shared/lib/format.ts';
+import { clock, shortDate } from '../../../shared/lib/format.ts';
 import { useTimelineDrag, dragStyle } from '../model/useTimelineDrag.ts';
 const props = defineProps<{
   lanes: CategoryLane[];
   range: TrackRange;
-  date: string;
   now: number;
   selected?: string;
 }>();
@@ -20,10 +19,8 @@ const { drag, skippedClick, down, move, up, cancel } = useTimelineDrag(
   },
 );
 const ticks = computed(() => overviewTicks(props.range));
-const current = computed(
-  () =>
-    localDate(props.now) === props.date && props.now >= props.range.from && props.now <= props.range.to,
-);
+const showDates = computed(() => localDate(props.range.from) !== localDate(props.range.to - 1));
+const current = computed(() => props.now >= props.range.from && props.now <= props.range.to);
 function percent(value: number): string {
   return `${trackPercent(value, props.range)}%`;
 }
@@ -38,17 +35,22 @@ function choose(id: string): void {
   skippedClick.value = false;
 }
 function axisClock(value: number): string {
-  return localDate(value) === props.date ? clock(value) : '24:00';
+  const sameDayEnd =
+    !showDates.value &&
+    value === props.range.to &&
+    new Date(value).getHours() === 0 &&
+    new Date(value).getMinutes() === 0;
+  return sameDayEnd ? '24:00' : clock(value);
 }
 </script>
 <template>
   <div class="overview" aria-label="Обзор занятий по категориям">
-    <div class="axis row">
+    <div class="axis row" :class="{ 'dated-axis': showDates }">
       <span>Категория</span>
       <div class="plot axis-plot">
-        <span v-for="tick in ticks" :key="tick" class="tick" :style="{ left: percent(tick) }">{{
-          axisClock(tick)
-        }}</span>
+        <span v-for="tick in ticks" :key="tick" class="tick" :style="{ left: percent(tick) }">
+          {{ axisClock(tick) }}<small v-if="showDates">{{ shortDate(localDate(tick)) }}</small>
+        </span>
       </div>
       <span class="total-label">Учтено</span>
     </div>
@@ -105,6 +107,18 @@ function axisClock(value: number): string {
   min-height: 38px;
   color: var(--muted);
   font-size: 12px;
+}
+.dated-axis {
+  min-height: 54px;
+}
+.dated-axis .axis-plot {
+  height: 50px;
+}
+.tick small {
+  display: block;
+  font-size: 10px;
+  text-align: center;
+  margin-top: 3px;
 }
 .lane {
   min-height: 48px;
@@ -244,6 +258,9 @@ button:focus-visible {
     font-size: 11px;
   }
   .axis-plot .tick:nth-child(even):not(:last-child) {
+    display: none;
+  }
+  .dated-axis .tick:not(:first-child):not(:last-child) {
     display: none;
   }
 }

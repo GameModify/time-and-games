@@ -19,7 +19,7 @@ export interface TrackRange {
   from: number;
   to: number;
 }
-function daySegments(sessions: Session[], range: TrackRange, now: number): TrackSegment[] {
+function rangeSegments(sessions: Session[], range: TrackRange, now: number): TrackSegment[] {
   return sessions
     .map((session) => ({
       session,
@@ -46,9 +46,16 @@ export function summarizeTrack(id: string, segments: TrackSegment[]): ActivityTr
   };
 }
 export function activityTracks(sessions: Session[], date: string, now: number): ActivityTrack[] {
-  const [from, to] = dayBounds(date),
-    groups = new Map<string, TrackSegment[]>();
-  for (const segment of daySegments(sessions, { from, to }, now)) {
+  const [from, to] = dayBounds(date);
+  return activityTracksInRange(sessions, { from, to }, now);
+}
+export function activityTracksInRange(
+  sessions: Session[],
+  range: TrackRange,
+  now: number,
+): ActivityTrack[] {
+  const groups = new Map<string, TrackSegment[]>();
+  for (const segment of rangeSegments(sessions, range, now)) {
     const session = segment.session,
       id = (session.group_id ?? session.id) + ':' + session.category_id;
     const rows = groups.get(id) ?? [];

@@ -236,11 +236,13 @@ const donutGradient = computed(() => {
       />
       <DayTimeline
         v-else-if="view === 'day' && display === 'timeline'"
-        :sessions="daySessions"
+        :sessions="model.sessions"
+        :hours="model.timelineHours"
         :categories="categories"
         :games="model.games"
         :date="date"
         :now="now"
+        @period="model.setTimelineHours"
         @edit="editSession"
       />
       <div v-else-if="view === 'day'" class="session-list">

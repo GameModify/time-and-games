@@ -4,6 +4,8 @@ import { ChevronLeft, ChevronRight, Clock3, Plus, ZoomIn } from 'lucide-vue-next
 import type { Category, Session, Game } from '../../../shared/api/contracts.ts';
 import {
   activityTracks,
+  activityTracksInRange,
+  recentHourOptions,
   tracksInRange,
   categoryLanes,
   currentActivities,
@@ -12,9 +14,9 @@ import {
   shiftedTrackRange,
   zoomTrackRange,
 } from '../../../entities/activity/index.ts';
-import type { ActivityTrack, TrackRange } from '../../../entities/activity/index.ts';
+import type { ActivityTrack, TrackRange, RecentTrackHours } from '../../../entities/activity/index.ts';
 import { dayBounds, localDate } from '../../../shared/lib/date.ts';
-import { clock } from '../../../shared/lib/format.ts';
+import { clock, shortDate } from '../../../shared/lib/format.ts';
 import CurrentActivities from './CurrentActivities.vue';
 import TimelineOverview from './TimelineOverview.vue';
 import TimelineDetails from './TimelineDetails.vue';
@@ -24,25 +26,31 @@ const props = defineProps<{
   games: Game[];
   date: string;
   now: number;
+  hours: RecentTrackHours | null;
 }>();
-const emit = defineEmits<{ edit: [session?: Session] }>();
-const mode = ref<'day' | 'recent'>('day'),
-  selection = ref<TrackRange | null>(null);
+const emit = defineEmits<{ edit: [session?: Session]; period: [hours: RecentTrackHours | null] }>();
+const selection = ref<TrackRange | null>(null);
 const selectedCurrent = ref(false);
 const selectedId = ref(''),
   selectedItem = ref(''),
   expanded = ref(false);
-const tracks = computed(() => activityTracks(props.sessions, props.date, props.now).map(labelTrack));
-const lanes = computed(() => categoryLanes(tracks.value, props.categories));
-
-const live = computed(() => currentActivities(tracks.value, props.date, props.now));
-
-const range = computed(() => {
-  if (selection.value) return selection.value;
-  if (mode.value === 'recent') return recentTrackRange(props.date, props.now, tracks.value);
+const bounds = computed(() => {
+  if (props.hours !== null) return recentTrackRange(props.now, props.hours);
   const [from, to] = dayBounds(props.date);
   return { from, to };
 });
+const tracks = computed(() =>
+  activityTracksInRange(props.sessions, bounds.value, props.now).map(labelTrack),
+);
+const currentDate = computed(() => (props.hours === null ? props.date : localDate(props.now)));
+const dayTracks = computed(() =>
+  activityTracks(props.sessions, currentDate.value, props.now).map(labelTrack),
+);
+const lanes = computed(() => categoryLanes(dayTracks.value, props.categories));
+
+const live = computed(() => currentActivities(dayTracks.value, currentDate.value, props.now));
+
+const range = computed(() => selection.value ?? bounds.value);
 const windowLanes = computed(() =>
   categoryLanes(tracksInRange(tracks.value, range.value), props.categories),
 );
@@ -50,13 +58,13 @@ const visible = computed(() => (expanded.value ? windowLanes.value : windowLanes
 const selected = computed(() =>
   (selectedCurrent.value ? lanes.value : windowLanes.value).find((lane) => lane.id === selectedId.value),
 );
-const rangeLabel = computed(
-  () =>
-    `${clock(range.value.from)} - ${localDate(range.value.to) === props.date ? clock(range.value.to) : '24:00'}`,
-);
-const zoomed = computed(
-  () => range.value.to - range.value.from < dayBounds(props.date)[1] - dayBounds(props.date)[0],
-);
+const rangeLabel = computed(() => {
+  const { from, to } = range.value;
+  if (localDate(from) !== localDate(to - 1))
+    return `${shortDate(localDate(from))}, ${clock(from)} - ${shortDate(localDate(to))}, ${clock(to)}`;
+  return `${clock(from)} - ${to === dayBounds(localDate(from))[1] ? '24:00' : clock(to)}`;
+});
+const zoomed = computed(() => range.value.to - range.value.from < bounds.value.to - bounds.value.from);
 watch(() => props.date, reset);
 function labelTrack(track: ActivityTrack): ActivityTrack {
   const game = props.games.find((item) => item.id === track.segments[0]?.session.game_id);
@@ -68,9 +76,15 @@ function reset(): void {
   selectedItem.value = '';
   expanded.value = false;
 }
-function changeMode(value: 'day' | 'recent'): void {
-  mode.value = value;
+function changeMode(hours: RecentTrackHours | null): void {
   selection.value = null;
+  emit('period', hours);
+}
+function selectRecent(event: Event): void {
+  if (!(event.target instanceof HTMLSelectElement)) return;
+  const value = event.target.value;
+  const hours = recentHourOptions.find((option) => String(option) === value);
+  if (hours !== undefined) changeMode(hours);
 }
 function choose(id: string): void {
   selectedCurrent.value = false;
@@ -83,7 +97,7 @@ function showCurrent(item: ActivityTrack): void {
   selectedItem.value = item.id;
 }
 function focus(item: ActivityTrack): void {
-  selection.value = focusedTrackRange({ from: item.start, to: item.end }, props.date);
+  selection.value = focusedTrackRange({ from: item.start, to: item.end }, bounds.value);
   selectedId.value = '';
 }
 function edit(session: Session): void {
@@ -94,23 +108,31 @@ function edit(session: Session): void {
 <template>
   <div class="day-overview">
     <CurrentActivities
-      v-if="date === localDate(now)"
+      v-if="currentDate === localDate(now)"
       :items="live"
       :categories="categories"
       @select="showCurrent"
     />
     <div class="overview-toolbar">
-      <div class="segmented" aria-label="Период на графике">
-        <button :class="{ active: mode === 'day' && !selection }" @click="changeMode('day')">
+      <div class="segmented period-picker" aria-label="Период на графике">
+        <button :class="{ active: hours === null && !selection }" @click="changeMode(null)">
           Весь день
         </button>
-        <button :class="{ active: mode === 'recent' && !selection }" @click="changeMode('recent')">
-          Последние 2 часа
-        </button>
+        <select
+          aria-label="Последние часы"
+          :value="hours ?? ''"
+          :class="{ active: hours !== null && !selection }"
+          @change="selectRecent"
+        >
+          <option value="" disabled>Последние часы</option>
+          <option v-for="value in recentHourOptions" :key="value" :value="value">
+            Последние {{ value }} {{ value === 2 || value === 24 ? 'часа' : 'часов' }}
+          </option>
+        </select>
       </div>
     </div>
-    <div v-if="!tracks.length" class="track-empty">
-      <Clock3 :size="28" /><strong>В этот день пока нет записей</strong
+    <div v-if="!windowLanes.length" class="track-empty">
+      <Clock3 :size="28" /><strong>За этот период пока нет записей</strong
       ><button class="button secondary" @click="emit('edit')"><Plus :size="15" />Добавить запись</button>
     </div>
     <template v-else>
@@ -122,8 +144,8 @@ function edit(session: Session): void {
           <button
             class="icon-button"
             aria-label="Предыдущий участок графика"
-            :disabled="!zoomed || range.from <= dayBounds(date)[0]"
-            @click="selection = shiftedTrackRange(range, date, -1)"
+            :disabled="!zoomed || range.from <= bounds.from"
+            @click="selection = shiftedTrackRange(range, bounds, -1)"
           >
             <ChevronLeft :size="17" />
           </button>
@@ -138,8 +160,8 @@ function edit(session: Session): void {
           <button
             class="icon-button"
             aria-label="Следующий участок графика"
-            :disabled="!zoomed || range.to >= dayBounds(date)[1]"
-            @click="selection = shiftedTrackRange(range, date, 1)"
+            :disabled="!zoomed || range.to >= bounds.to"
+            @click="selection = shiftedTrackRange(range, bounds, 1)"
           >
             <ChevronRight :size="17" />
           </button>
@@ -151,7 +173,6 @@ function edit(session: Session): void {
       <TimelineOverview
         :lanes="visible"
         :range="range"
-        :date="date"
         :now="now"
         :selected="selectedId"
         @select="choose"
@@ -189,6 +210,25 @@ function edit(session: Session): void {
   flex-wrap: wrap;
   gap: 16px;
   padding: 20px;
+}
+.period-picker {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+.period-picker select {
+  width: auto;
+  max-width: 100%;
+  min-height: 36px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.period-picker select.active {
+  background: var(--accent-surface);
+  color: var(--accent-text);
 }
 .range-toolbar {
   display: flex;
