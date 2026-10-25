@@ -29,7 +29,8 @@ const specs: ScopeSpec[] = [
     value: 'site',
     label: 'Этот сайт',
     field: 'website',
-    detail: (value) => 'Активная работа с сайтом ' + value + '. Категория фоновых видео не изменится.',
+    detail: (value) =>
+      'Все прошлые и будущие записи сайта ' + value + '. Категория фоновых видео не изменится.',
   },
   {
     value: 'app',

@@ -18,6 +18,7 @@ import { dayBounds, localDate } from '../../../shared/lib/date.ts';
 import { clock, shortDate } from '../../../shared/lib/format.ts';
 import { sortedLanes } from '../model/timelineSummary.ts';
 import type { TimelineOrder } from '../model/timelineSummary.ts';
+import ClassificationDialog from './ClassificationDialog.vue';
 import CurrentActivities from './CurrentActivities.vue';
 import TimelinePeriodPicker from './TimelinePeriodPicker.vue';
 import TimelineOverview from './TimelineOverview.vue';
@@ -30,7 +31,12 @@ const props = defineProps<{
   now: number;
   hours: RecentTrackHours | null;
 }>();
-const emit = defineEmits<{ edit: [session?: Session]; period: [hours: RecentTrackHours | null] }>();
+const emit = defineEmits<{
+  edit: [session?: Session];
+  period: [hours: RecentTrackHours | null];
+  refresh: [];
+}>();
+const classification = ref<Session | null>(null);
 const selection = ref<TrackRange | null>(null);
 const order = ref<TimelineOrder>('desc');
 const selectedCurrent = ref(false);
@@ -97,6 +103,14 @@ function showCurrent(item: ActivityTrack): void {
 function focus(item: ActivityTrack): void {
   selection.value = focusedTrackRange({ from: item.start, to: item.end }, bounds.value);
   selectedId.value = '';
+}
+function classify(session: Session): void {
+  selectedId.value = '';
+  classification.value = session;
+}
+function classified(): void {
+  classification.value = null;
+  emit('refresh');
 }
 function edit(session: Session): void {
   selectedId.value = '';
@@ -184,6 +198,15 @@ function edit(session: Session): void {
       @close="selectedId = ''"
       @focus="focus"
       @edit="edit"
+      @classify="classify"
+    />
+    <ClassificationDialog
+      v-if="classification"
+      :session="classification"
+      :categories="categories"
+      initialScope="site"
+      @close="classification = null"
+      @saved="classified"
     />
   </div>
 </template>

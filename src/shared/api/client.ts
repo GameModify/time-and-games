@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { WebsiteAssignment } from './websiteContracts.ts';
 import type { LocalProfile } from './profileContracts.ts';
 import type {
   Classification,
@@ -19,6 +20,7 @@ import type {
   SettingsWriteDto,
 } from './inputContracts.ts';
 export type WriteDto =
+  | WebsiteAssignment
   | LocalProfile
   | TrackingPreferences
   | DashboardCards

@@ -8,14 +8,21 @@ import { api } from '../../../shared/api/client.ts';
 import { errorMessage } from '../../../shared/lib/errors.ts';
 import { useDialogFocus } from '../../../shared/lib/dialogFocus.ts';
 import { createBackdropDismiss } from '../../../shared/lib/backdrop.ts';
-const props = defineProps<{ session: Session; categories: Category[] }>();
+const props = defineProps<{
+  session: Session;
+  categories: Category[];
+  initialScope?: Classification['scope'];
+}>();
 const emit = defineEmits<{ close: []; saved: [] }>();
 const category = ref(props.session.category_id),
-  scope = ref<Classification['scope']>('record');
+  scope = ref<Classification['scope']>(props.initialScope ?? 'record');
 const project = ref(props.session.tracking_context?.project ?? ''),
   busy = ref(false),
   error = ref('');
-const scopes = computed(() => classificationScopes(props.session.tracking_context));
+const scopes = computed(() => {
+  const choices = classificationScopes(props.session.tracking_context);
+  return props.session.tracking_live ? choices.filter((item) => item.value === 'site') : choices;
+});
 const detail = computed(() => scopes.value.find((item) => item.value === scope.value)?.detail);
 const modal = ref<HTMLElement | null>(null);
 useDialogFocus(modal, close);
@@ -23,17 +30,33 @@ const backdrop = createBackdropDismiss(close);
 function close(): void {
   if (!busy.value) emit('close');
 }
+async function persist(): Promise<void> {
+  if (scope.value === 'site' && props.session.tracking_context?.website) {
+    await api('/tracking/websites/classify', 'POST', {
+      host: props.session.tracking_context.website,
+      category_id: category.value,
+      project: project.value,
+    });
+    return;
+  }
+  await api('/tracking/classify', 'POST', {
+    session_id: props.session.id,
+    category_id: category.value,
+    scope: scope.value,
+    project: project.value,
+  });
+}
+async function resetSite(): Promise<void> {
+  category.value = 'browser-web';
+  project.value = '';
+  await save();
+}
 async function save(): Promise<void> {
   if (busy.value) return;
   busy.value = true;
   error.value = '';
   try {
-    await api('/tracking/classify', 'POST', {
-      session_id: props.session.id,
-      category_id: category.value,
-      scope: scope.value,
-      project: project.value,
-    });
+    await persist();
     emit('saved');
   } catch (cause) {
     error.value = errorMessage(cause);
@@ -85,9 +108,22 @@ async function save(): Promise<void> {
             placeholder="Например, Time &amp; Games"
             :disabled="busy"
         /></label>
-        <p v-if="scope !== 'record'" class="field-hint">
+        <p v-if="scope === 'site'" class="field-hint">
+          Категория и проект изменятся для всей истории этого сайта, текущего и будущих отрезков.
+          Продолжительность сохранится. Категории воспроизводимых видео не изменятся.
+        </p>
+        <p v-else-if="scope !== 'record'" class="field-hint">
           Изменится эта запись и правило для будущих занятий. Другие записи истории останутся прежними.
         </p>
+        <button
+          v-if="scope === 'site' && categories.some((item) => item.id === 'browser-web')"
+          type="button"
+          class="button secondary"
+          :disabled="busy"
+          @click="resetSite"
+        >
+          Вернуть в просмотр сайтов
+        </button>
         <p v-if="error" class="alert error" role="alert">{{ error }}</p>
         <div class="modal-actions">
           <button type="button" class="button secondary" :disabled="busy" @click="close">Отмена</button

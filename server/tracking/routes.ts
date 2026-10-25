@@ -1,3 +1,6 @@
+import type { TrackingConnection } from '../../src/shared/api/trackingContracts.ts';
+import { synchronizeWebsiteRules } from './website-rules.ts';
+import { websiteClassificationRoutes } from './website-classification.ts';
 import { setupYouTube } from './youtube-setup.ts';
 import { classificationRoutes } from './classification.ts';
 import { setupWebTracking } from './web-setup.ts';
@@ -20,19 +23,12 @@ import { configuration, initializeTracking, inbox, markInbox, updateConfiguratio
 import { savePreferences, pauseTracker, readRules, saveRules, validateEndpoint } from './http.ts';
 import { importInterval } from './import.ts';
 function connectionRoutes(app: Express, controller: TrackingController): void {
-  const db = controller.db;
   app.get('/api/tracking', (_req, res) => {
     res.json(controller.state());
   });
   app.patch('/api/tracking', async (req, res) => {
     const input = trackingConnectionSchema.parse(req.body);
-    validateEndpoint(input.endpoint);
-    ensure(!controller.syncing, 'Подожди окончания синхронизации', 409);
-    ensure(!input.enabled || Boolean(input.token ?? configuration(db).token), 'Укажи ключ подключения');
-    updateConfiguration(db, input);
-    setupWebTracking(db);
-    setupYouTube(db);
-    await controller.sync();
+    await saveConnection(controller, input);
     res.json(controller.state());
   });
   app.post('/api/tracking/sync', async (_req, res) => {
@@ -53,13 +49,16 @@ function importRoutes(app: Express, db: DatabaseSync): void {
 }
 function ruleRoutes(app: Express, controller: TrackingController): void {
   const db = controller.db;
+  websiteClassificationRoutes(app, db);
   preferenceRoutes(app, controller);
   app.get('/api/tracking/rules', async (_req, res) => {
     res.json(await readRules(configuration(db)));
   });
   app.patch('/api/tracking/rules', async (req, res) => {
     const { rules } = trackingRulesWriteSchema.parse(req.body);
-    res.json(await saveRules(configuration(db), rules));
+    const result = await saveRules(configuration(db), rules);
+    const changed = synchronizeWebsiteRules(db, rules);
+    res.json({ ...result, changed });
   });
   app.post('/api/tracking/pause', async (req, res) => {
     const { paused } = z.object({ paused: z.boolean() }).parse(req.body);
@@ -103,4 +102,16 @@ function preferenceRoutes(app: Express, controller: TrackingController): void {
     await controller.sync();
     res.json(result);
   });
+}
+
+async function saveConnection(controller: TrackingController, input: TrackingConnection): Promise<void> {
+  const db = controller.db;
+  validateEndpoint(input.endpoint);
+  ensure(!controller.syncing, 'Подожди окончания синхронизации', 409);
+  ensure(!input.enabled || Boolean(input.token ?? configuration(db).token), 'Укажи ключ подключения');
+  updateConfiguration(db, input);
+  controller.websitesLoaded = false;
+  setupWebTracking(db);
+  setupYouTube(db);
+  await controller.sync();
 }

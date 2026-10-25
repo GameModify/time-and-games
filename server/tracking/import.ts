@@ -1,3 +1,4 @@
+import { websiteInterval } from './website-rules.ts';
 import { trackingContext } from './context.ts';
 import { linkAutomatic } from './grouping.ts';
 import { rememberResource, intervalGame } from './bindings.ts';
@@ -38,8 +39,9 @@ export function coveredRanges(db: DatabaseSync, category: string): TimeRange[] {
     });
 }
 export function importInterval(db: DatabaseSync, input: TrackingImport): number {
-  const item = inboxItem(db, input);
-  ensure(item, 'Интервал не найден', 404);
+  const original = inboxItem(db, input);
+  ensure(original, 'Интервал не найден', 404);
+  const item = websiteInterval(db, original);
   if (item.state !== 'pending') return 0;
   ensure(item.closed && item.end_at > item.start_at, 'Интервал ещё не завершён');
   ensure(

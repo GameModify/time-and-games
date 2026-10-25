@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { websiteSession, lastVisit } from '../model/itemSorting.ts';
+import { computed, ref } from 'vue';
 import { Focus } from 'lucide-vue-next';
 import type { ActivityTrack } from '../../../entities/activity/index.ts';
 import type { Session } from '../../../shared/api/contracts.ts';
 import { duration } from '../../../shared/lib/date.ts';
-import { clock } from '../../../shared/lib/format.ts';
+import { clock, shortDate } from '../../../shared/lib/format.ts';
+import { localDate } from '../../../shared/lib/date.ts';
 const props = defineProps<{ item: ActivityTrack; selected: boolean; fallback: string }>();
-defineEmits<{ focus: [item: ActivityTrack]; edit: [session: Session] }>();
+defineEmits<{ focus: [item: ActivityTrack]; edit: [session: Session]; classify: [session: Session] }>();
 const open = ref(props.selected);
+const site = computed(() => websiteSession(props.item));
 function toggle(event: Event): void {
   if (event.currentTarget instanceof HTMLDetailsElement) open.value = event.currentTarget.open;
 }
@@ -16,7 +19,12 @@ function toggle(event: Event): void {
   <article class="activity-item">
     <details :open="selected" @toggle="toggle">
       <summary>
-        <span>{{ item.title || fallback }}</span
+        <span
+          >{{ item.title || fallback
+          }}<small
+            >Последний заход: {{ shortDate(localDate(lastVisit(item))) }},
+            {{ clock(lastVisit(item)) }}</small
+          ></span
         ><strong>{{ duration(item.elapsed) }}</strong>
       </summary>
       <div v-if="open" class="item-content">
@@ -33,6 +41,9 @@ function toggle(event: Event): void {
         <p>{{ clock(item.start) }} - {{ clock(item.end) }} · отрезков: {{ item.segments.length }}</p>
         <button class="button secondary" @click="$emit('focus', item)">
           <Focus :size="15" />Показать на шкале
+        </button>
+        <button v-if="site" class="button secondary site-category" @click="$emit('classify', site)">
+          Категория сайта
         </button>
         <div class="segments">
           <button
@@ -108,6 +119,9 @@ dd {
 }
 p {
   margin: 0 0 14px;
+}
+.site-category {
+  margin: 10px 0 0 8px;
 }
 .segments {
   display: grid;

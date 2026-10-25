@@ -1,3 +1,4 @@
+import { classifyWebsite } from './website-classification.ts';
 import type { Express } from 'express';
 import type { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
@@ -75,6 +76,14 @@ async function remember(db: DatabaseSync, input: Classification, session: Sessio
 }
 export async function classifySession(db: DatabaseSync, input: Classification): Promise<void> {
   const session = selectedSession(db, input);
+  if (input.scope === 'site' && session.tracking_context?.website) {
+    await classifyWebsite(db, {
+      host: session.tracking_context.website,
+      category_id: input.category_id,
+      project: input.project,
+    });
+    return;
+  }
   await remember(db, input, session);
   transaction(db, () => {
     db.prepare('UPDATE sessions SET category_id=? WHERE id=?').run(input.category_id, input.session_id);

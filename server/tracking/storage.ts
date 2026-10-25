@@ -1,3 +1,4 @@
+import { websiteAssignmentSchema } from '../../src/shared/api/websiteContracts.ts';
 import { initializeTimers } from '../timers/storage.ts';
 import { initializeBindings } from './bindings.ts';
 import type { DatabaseSync } from 'node:sqlite';
@@ -15,6 +16,7 @@ import type {
 } from '../../src/shared/api/trackingContracts.ts';
 import { transaction } from '../storage.ts';
 const persistedSchema = trackingConnectionSchema.extend({
+  website_rules: websiteAssignmentSchema.array().default([]),
   token: z.string().default(''),
   cursor: z.number().int().nonnegative(),
   device_id: z.string(),
@@ -26,6 +28,7 @@ const defaultConfiguration: TrackingConfiguration = {
   token: '',
   auto_import: false,
   mappings: [],
+  website_rules: [],
   cursor: 0,
   device_id: '',
 };
@@ -70,12 +73,13 @@ export function storePage(db: DatabaseSync, page: TrackerPage): void {
   });
 }
 export function inbox(db: DatabaseSync, activities?: string[]): TrackingInboxItem[] {
-  const filter = inboxFilter(activities);
+  const hosts = activities === undefined ? [] : configuration(db).website_rules.map((item) => item.host);
+  const filter = inboxFilter(activities, hosts);
   const query =
     "SELECT * FROM tracking_inbox WHERE state='pending' AND json_extract(value,'$.closed')=1 AND json_extract(value,'$.end_at')>json_extract(value,'$.start_at')";
   return db
     .prepare(query + filter + ' ORDER BY rowid DESC LIMIT 200')
-    .all(...(activities ?? []))
+    .all(...(activities ?? []), ...hosts)
     .map((row) => {
       const value: unknown = JSON.parse(z.string().parse(row.value));
       return trackingInboxSchema.parse({
@@ -119,14 +123,19 @@ export function openInbox(db: DatabaseSync, device: string): TrackingInboxItem[]
     );
 }
 
-function inboxFilter(activities?: string[]): string {
+function inboxFilter(activities?: string[], hosts: string[] = []): string {
   if (activities === undefined) return '';
   const selection = activities.map(() => '?').join(',');
+  const sites = hosts.length
+    ? " OR lower(json_extract(value,'$.website')) IN (" + hosts.map(() => '?').join(',') + ')'
+    : '';
   const mapped = selection ? "json_extract(value,'$.activity') IN (" + selection + ') OR ' : '';
   return (
     ' AND (' +
     mapped +
     "json_extract(value,'$.activity') LIKE 'tng:%' OR " +
-    "EXISTS (SELECT 1 FROM tracking_bindings b WHERE b.resource_id=json_extract(value,'$.resource_id') AND b.source=json_extract(value,'$.source')))"
+    "EXISTS (SELECT 1 FROM tracking_bindings b WHERE b.resource_id=json_extract(value,'$.resource_id') AND b.source=json_extract(value,'$.source'))" +
+    sites +
+    ')'
   );
 }

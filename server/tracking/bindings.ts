@@ -1,5 +1,9 @@
 import type { DatabaseSync } from 'node:sqlite';
-import type { TrackingInboxItem, TrackingConnection } from '../../src/shared/api/trackingContracts.ts';
+import type {
+  TrackingInboxItem,
+  TrackingConnection,
+  TrackerInterval,
+} from '../../src/shared/api/trackingContracts.ts';
 import { z } from 'zod';
 const bindingSchema = z.object({ category_id: z.string() });
 export function initializeBindings(db: DatabaseSync): void {
@@ -17,7 +21,7 @@ export function rememberResource(db: DatabaseSync, item: TrackingInboxItem, cate
 }
 export function intervalCategory(
   db: DatabaseSync,
-  item: TrackingInboxItem,
+  item: TrackerInterval,
   mappings: TrackingConnection['mappings'],
 ): string | undefined {
   if (item.activity?.startsWith('tng:')) return item.activity.slice(4);

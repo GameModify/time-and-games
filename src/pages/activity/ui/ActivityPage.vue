@@ -206,6 +206,7 @@ const donutGradient = computed(() => {
         :date="date"
         :now="now"
         @period="model.setTimelineHours"
+        @refresh="model.load"
         @edit="editSession"
       />
       <div v-else-if="view === 'day'" class="session-list">

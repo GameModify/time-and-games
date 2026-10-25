@@ -126,7 +126,7 @@ class TrackingActions {
   saveRules = async () => {
     await this.run(async () => {
       await api('/tracking/rules', 'PATCH', { rules: this.model.rules });
-      this.model.notice = 'Правила сохранены. Они применяются к новым интервалам.';
+      this.model.notice = 'Правила сохранены. История сайтов и статистика обновлены.';
     });
   };
   addRule = () => {

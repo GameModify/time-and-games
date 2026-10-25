@@ -1,3 +1,5 @@
+import { synchronizeWebsiteRules, websiteInterval } from './website-rules.ts';
+import { readRules } from './http.ts';
 import { categoryLabels } from './labels.ts';
 import { publishLabels } from './http.ts';
 import { intervalCategory } from './bindings.ts';
@@ -12,6 +14,7 @@ export class TrackingController {
   status: TrackerStatus | null = null;
   error = '';
   labelRevision = '';
+  websitesLoaded = false;
   syncing: Promise<number> | null = null;
   constructor(db: DatabaseSync) {
     this.db = db;
@@ -53,7 +56,7 @@ export class TrackingController {
       this.db,
       config.mappings.map((mapping) => mapping.activity),
     )) {
-      const category = intervalCategory(this.db, item, config.mappings);
+      const category = intervalCategory(this.db, websiteInterval(this.db, item), config.mappings);
       if (category && this.db.prepare('SELECT 1 FROM categories WHERE id=?').get(category))
         added += importInterval(this.db, {
           id: item.id,
@@ -84,11 +87,17 @@ export class TrackingController {
     this.error = '';
     return true;
   }
+  async loadWebsiteRules(): Promise<void> {
+    if (this.websitesLoaded) return;
+    synchronizeWebsiteRules(this.db, await readRules(configuration(this.db)));
+    this.websitesLoaded = true;
+  }
   async performSync(): Promise<number> {
     if (this.disabled()) return 0;
     try {
       this.status = await readStatus(configuration(this.db));
       await this.publishCategories();
+      await this.loadWebsiteRules();
       for (let count = 0; count < 5; count++) {
         if (!(await this.fetchPage())) break;
       }
