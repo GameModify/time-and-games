@@ -17,14 +17,20 @@ rem TLS 1.2 works with local network filters that interrupt TLS 1.3.
 set "NODE_OPTIONS=%NODE_OPTIONS% --tls-max-v1.2"
 if not exist "node_modules" (
   echo [Time ^& Games] Установка зависимостей...
-  node scripts\npm.ts ci
+  if exist "release.json" (
+    node scripts\npm.ts ci --omit=dev
+  ) else (
+    node scripts\npm.ts ci
+  )
   if errorlevel 1 goto fail
 )
-echo [Time ^& Games] Сборка актуального интерфейса...
-node scripts\npm.ts run build
-if errorlevel 1 goto fail
+if not exist "release.json" (
+  echo [Time ^& Games] Сборка актуального интерфейса...
+  node scripts\npm.ts run build
+  if errorlevel 1 goto fail
+)
 echo [Time ^& Games] Запуск: http://127.0.0.1:3535
-start "" "http://127.0.0.1:3535"
+if not "%TNG_NO_BROWSER%"=="1" start "" "http://127.0.0.1:3535"
 node server\index.ts
 if errorlevel 1 goto fail
 goto :eof

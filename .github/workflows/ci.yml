@@ -12,8 +12,11 @@ permissions:
 
 jobs:
   verify:
-    name: Build, lint and tests
-    runs-on: ubuntu-latest
+    name: Build, lint and tests (${{ matrix.os }})
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,3 +33,9 @@ jobs:
         run: npm run build
       - name: Regression tests
         run: npm test
+      - name: Package release
+        if: runner.os == 'Windows'
+        run: npm run package:release
+      - name: Verify release startup
+        if: runner.os == 'Windows'
+        run: npm run smoke:release
