@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { idleMinutes } from '../../../shared/lib/trackingIdle.ts';
 const minutes = defineModel<number>({ required: true });
 defineProps<{ busy: boolean; supported: boolean }>();
 const emit = defineEmits<{ save: [] }>();
-const options = Array.from({ length: 30 }, (_, index) => index + 1);
 </script>
 <template>
   <details class="tracking-details idle-settings">
@@ -14,13 +12,23 @@ const options = Array.from({ length: 30 }, (_, index) => index + 1);
     </p>
     <p v-if="!supported" class="muted">Обнови Activity Tracker, чтобы менять время бездействия.</p>
     <form v-else class="idle-form" @submit.prevent="emit('save')">
-      <label
-        >Время без действий<select v-model.number="minutes">
-          <option v-for="value in options" :key="value" :value="value">
-            {{ idleMinutes(value * 60000) }}
-          </option>
-        </select></label
-      >
+      <label class="idle-minutes" for="inactivity-minutes"
+        >Время бездействия, мин
+        <input
+          id="inactivity-minutes"
+          v-model.number="minutes"
+          type="number"
+          inputmode="numeric"
+          min="1"
+          max="30"
+          step="1"
+          required
+          :disabled="busy"
+          placeholder="Например, 5"
+          aria-describedby="inactivity-minutes-help"
+        />
+      </label>
+      <small id="inactivity-minutes-help" class="muted">От 1 до 30 минут.</small>
       <button
         class="button primary"
         :disabled="busy"
@@ -41,16 +49,15 @@ const options = Array.from({ length: 30 }, (_, index) => index + 1);
   justify-items: start;
   grid-template-columns: minmax(0, 1fr);
 }
-label {
+.idle-minutes {
   display: grid;
   gap: 8px;
   color: var(--muted);
   min-width: 0;
-  width: 100%;
 }
-select {
+.idle-minutes input {
+  width: 140px;
+  max-width: 100%;
   min-width: 0;
-  width: 100%;
-  max-width: 240px;
 }
 </style>

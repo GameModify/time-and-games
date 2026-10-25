@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { LocalProfile } from './profileContracts.ts';
 import type {
   Classification,
   GameApplication,
@@ -18,6 +19,7 @@ import type {
   SettingsWriteDto,
 } from './inputContracts.ts';
 export type WriteDto =
+  | LocalProfile
   | TrackingPreferences
   | DashboardCards
   | Classification

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ProfileSettings from './ProfileSettings.vue';
+import type { LocalProfile } from '../../../shared/api/profileContracts.ts';
 import type { Category } from '../../../shared/api/contracts.ts';
 import type { EditorView } from '../../../features/record-editor/index.ts';
 import type { ThemeView } from '../../../features/appearance/index.ts';
@@ -20,6 +22,8 @@ import {
 } from 'lucide-vue-next';
 import { activityIcons as icons } from '../../../entities/activity/index.ts';
 const props = defineProps<{
+  profile: LocalProfile;
+  saveProfile: (profile: LocalProfile) => Promise<void>;
   categories: Category[];
   groupNames: string[];
   editor: EditorView;
@@ -30,6 +34,7 @@ const { theme, setTheme } = toRefs(props.appearance);
 const { editCategory, remove, readBackup, open } = toRefs(props.editor);
 </script>
 <template>
+  <ProfileSettings :profile="profile" :save="saveProfile" />
   <details class="panel settings-panel settings-disclosure appearance-panel">
     <summary class="section-heading">
       <div>

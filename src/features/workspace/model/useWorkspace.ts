@@ -1,3 +1,5 @@
+import { defaultProfile, profileSchema } from '../../../shared/api/profileContracts.ts';
+import type { LocalProfile } from '../../../shared/api/profileContracts.ts';
 import type { UnwrapNestedRefs } from 'vue';
 import type { Media } from '../../../shared/api/mediaContracts.ts';
 import type {
@@ -64,6 +66,11 @@ class WorkspaceController {
       }
       void this.load();
     });
+  };
+  profile = ref<LocalProfile>(defaultProfile());
+  saveProfile = async (value: LocalProfile): Promise<void> => {
+    this.profile.value = await readApi('/profile', profileSchema, 'PATCH', value);
+    this.flash('Профиль сохранён');
   };
   categories = ref<Category[]>([]);
   games = ref<Game[]>([]);
@@ -188,6 +195,7 @@ class WorkspaceController {
   };
   applySnapshot = (bootstrap: Bootstrap, rows: Session[]) => {
     this.dashboardCards.value = bootstrap.dashboard_cards;
+    this.profile.value = bootstrap.profile;
     this.categories.value = bootstrap.categories;
     this.games.value = bootstrap.games;
     this.media.value = bootstrap.media;
@@ -354,6 +362,8 @@ type WorkspaceControllerView = Pick<
   | 'date'
   | 'view'
   | 'display'
+  | 'profile'
+  | 'saveProfile'
   | 'categories'
   | 'games'
   | 'media'

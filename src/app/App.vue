@@ -6,6 +6,7 @@ import { useRecordEditor, RecordDialog } from '../features/record-editor/index.t
 import { useTheme } from '../features/appearance/index.ts';
 import { useWorkspace } from '../features/workspace/index.ts';
 import { nav, titles, pageEyebrows } from './config/navigation.ts';
+import ProfileAvatar from '../shared/ui/ProfileAvatar.vue';
 import AppMark from '../shared/ui/AppMark.vue';
 const workspace = useWorkspace();
 const workspaceView = reactive(workspace);
@@ -15,6 +16,14 @@ const appearance = reactive(useTheme());
 const { page, games, now, error, notice, loading, navigate, load } = workspace;
 const { editSession, editGame } = editorModel;
 const { theme, setTheme } = toRefs(appearance);
+const settingsProps = computed(() => ({
+  categories: workspaceView.categories,
+  groupNames: workspaceView.groupNames,
+  editor,
+  appearance,
+  profile: workspaceView.profile,
+  saveProfile: workspace.saveProfile,
+}));
 const pageProps = computed(() => {
   if (page.value === 'media')
     return { items: workspaceView.media, load: workspace.load, flash: workspace.flash };
@@ -25,13 +34,7 @@ const pageProps = computed(() => {
       toggleFavorite: workspace.toggleGameFavorite,
       busy: workspaceView.busy,
     };
-  if (page.value === 'settings')
-    return {
-      categories: workspaceView.categories,
-      groupNames: workspaceView.groupNames,
-      editor,
-      appearance,
-    };
+  if (page.value === 'settings') return settingsProps.value;
   return { model: workspaceView, editor };
 });
 </script>
@@ -62,8 +65,8 @@ const pageProps = computed(() => {
           <span class="status-dot" />
         </div>
         <div class="profile">
-          <span class="avatar">ТЫ</span>
-          <div>Твоё пространство<small>В своём ритме</small></div>
+          <ProfileAvatar class="avatar" :profile="workspaceView.profile" />
+          <div class="profile-name">{{ workspaceView.profile.name }}<small>В своём ритме</small></div>
         </div>
       </div>
     </aside>
@@ -88,7 +91,7 @@ const pageProps = computed(() => {
           ><span class="topbar-date">{{
             new Date(now).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
           }}</span
-          ><span class="small-avatar">ТЫ</span>
+          ><ProfileAvatar class="small-avatar" :profile="workspaceView.profile" />
         </div>
       </header>
       <div class="page-content">

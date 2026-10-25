@@ -1,3 +1,5 @@
+import { profileSchema } from '../src/shared/api/profileContracts.ts';
+import { testAvatar } from './profile-fixture.ts';
 import type { Backup, Game, Session, DashboardCards } from '../src/shared/api/contracts.ts';
 import type { GameInput } from '../src/shared/api/inputContracts.ts';
 import type { Media, MediaInput } from '../src/shared/api/mediaContracts.ts';
@@ -497,4 +499,42 @@ void test('dashboard API rejects duplicate built-ins and the games category alia
   for (const cards of [[games, games], [games, alias], [{ kind: 'metric', metric: 'missing' }]])
     assert.equal((await call('/dashboard-cards', 'PATCH', { cards })).status, 400);
   assert.deepEqual((await read(dashboardCardsSchema, '/dashboard-cards')).data.cards, []);
+});
+
+void test('local profile and uploaded avatar survive a server restart and appear in bootstrap', async () => {
+  const profile = { name: 'Мой профиль', avatar: testAvatar };
+  assert.equal((await call('/profile', 'PATCH', profile)).status, 200);
+  await shutdown();
+  await launch();
+  assert.deepEqual((await read(profileSchema, '/profile')).data, profile);
+  assert.deepEqual((await read(bootstrapSchema, '/bootstrap')).data.profile, profile);
+});
+void test('profile rejects remote, active, oversized and malformed avatar data without changing saved data', async () => {
+  const saved = (await read(profileSchema, '/profile')).data;
+  for (const avatar of [
+    'https://example.com/a.png',
+    'data:image/svg+xml;base64,PHN2Zy8+',
+    'data:image/webp;base64,AAAA',
+    'x'.repeat(200001),
+  ])
+    assert.equal((await call('/profile', 'PATCH', { name: 'Rejected', avatar })).status, 400);
+  assert.equal((await call('/profile', 'PATCH', { name: ' ', avatar: '' })).status, 400);
+  assert.deepEqual((await read(profileSchema, '/profile')).data, saved);
+});
+void test('backup restores local profile and older backups keep the current profile', async () => {
+  const backup = (await read(backupSchema, '/export')).data;
+  assert.equal(backup.profile?.avatar, testAvatar);
+  await call('/profile', 'PATCH', { name: 'После изменения', avatar: '' });
+  assert.equal((await call('/import-backup', 'POST', backup)).status, 200);
+  assert.deepEqual((await read(profileSchema, '/profile')).data, backup.profile);
+  const legacy = { ...backup, profile: undefined };
+  assert.equal((await call('/import-backup', 'POST', legacy)).status, 200);
+  assert.deepEqual((await read(profileSchema, '/profile')).data, backup.profile);
+});
+void test('removing the avatar keeps the profile name and survives another restart', async () => {
+  const profile = { name: 'Без картинки', avatar: '' };
+  assert.equal((await call('/profile', 'PATCH', profile)).status, 200);
+  await shutdown();
+  await launch();
+  assert.deepEqual((await read(profileSchema, '/profile')).data, profile);
 });

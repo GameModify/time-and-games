@@ -3641,3 +3641,8 @@ b {
 .settings-panel .category-setting > .icon-button {
   flex-shrink: 0;
 }
+
+.profile-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

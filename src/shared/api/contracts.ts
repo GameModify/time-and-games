@@ -1,5 +1,6 @@
 import { dashboardCardsSchema, defaultDashboardCards } from './dashboardContracts.ts';
 import { z } from 'zod';
+import { defaultProfile, profileSchema } from './profileContracts.ts';
 import { mediaSchema, personalRatingSchema } from './mediaContracts.ts';
 
 export const gameStatusSchema = z.enum(['backlog', 'playing', 'completed', 'paused', 'dropped']);
@@ -65,6 +66,7 @@ export const timerGroupSchema = z.object({
 export { dashboardCardsSchema, defaultDashboardCards } from './dashboardContracts.ts';
 export type { DashboardCard, DashboardCards, DashboardMetric } from './dashboardContracts.ts';
 export const bootstrapSchema = z.object({
+  profile: profileSchema.default(defaultProfile),
   dashboard_cards: dashboardCardsSchema.default(defaultDashboardCards),
   categories: categorySchema.array(),
   games: gameSchema.array(),
@@ -76,6 +78,7 @@ export const backupCategorySchema = categorySchema.extend({
   is_work: z.union([z.boolean(), z.literal(0), z.literal(1)]),
 });
 export const backupSchema = z.object({
+  profile: profileSchema.optional(),
   dashboard_cards: dashboardCardsSchema.optional(),
   format: z.literal('time-and-games-backup'),
   version: z.union([z.literal(1), z.literal(2), z.literal(3)]),

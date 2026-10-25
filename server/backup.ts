@@ -1,3 +1,4 @@
+import { readProfile, writeProfile, validateProfile } from './profile.ts';
 import { readDashboardCards, writeDashboardCards } from './dashboard-cards.ts';
 import { initializeSessionContext, withSessionContext } from './session-context.ts';
 import { exportTimerGroups, initializeTimers, restoreTimerGroups } from './timers/storage.ts';
@@ -30,6 +31,7 @@ export function exportBackup(db: DatabaseSync, store: BackupMediaStore): Backup 
   initializeTimers(db);
   return {
     dashboard_cards: readDashboardCards(db),
+    profile: readProfile(db),
     format: 'time-and-games-backup',
     version: 3,
     exported_at: new Date().toISOString(),
@@ -99,8 +101,7 @@ export function validateBackup(data: Backup): void {
     ),
     'Категория карточки не найдена',
   );
-  validateMedia(data.media);
-  validateTimerGroups(data);
+  validateBackupExtras(data);
 }
 export function restoreBackup(db: DatabaseSync, store: BackupMediaStore, data: Backup): void {
   initializeTimers(db);
@@ -116,7 +117,7 @@ export function restoreBackup(db: DatabaseSync, store: BackupMediaStore, data: B
     data.sessions.forEach((item) => {
       insertSession(db, item);
     });
-    writeDashboardCards(db, data.dashboard_cards ?? defaultDashboardCards());
+    restorePreferences(db, data);
     restoreTimerGroups(db, data.timer_groups ?? []);
     data.media.forEach((item) => store.restore(item));
   });
@@ -156,4 +157,15 @@ function backupIndexes(): BackupIndexes {
 
 function restoreCategories(db: DatabaseSync, categories: BackupCategory[]): void {
   for (const item of categories) insertCategory(db, { ...item, is_work: Boolean(item.is_work) });
+}
+
+function restorePreferences(db: DatabaseSync, data: Backup): void {
+  writeDashboardCards(db, data.dashboard_cards ?? defaultDashboardCards());
+  if (data.profile) writeProfile(db, data.profile);
+}
+
+function validateBackupExtras(data: Backup): void {
+  if (data.profile) validateProfile(data.profile);
+  validateMedia(data.media);
+  validateTimerGroups(data);
 }
