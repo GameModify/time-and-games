@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { workingApplication } from '../model/workContext.ts';
+import BrowserTracking from './BrowserTracking.vue';
 import WorkTracking from './WorkTracking.vue';
 import type { Category } from '../../../shared/api/contracts.ts';
 import GameTracking from './GameTracking.vue';
@@ -59,6 +60,7 @@ function position(value?: number): string {
         >
       </div>
     </div>
+    <BrowserTracking v-if="state.connected && !state.status?.paused" :status="state.status" :now="now" />
     <AssistantTracking
       v-if="state.connected && !state.status?.paused"
       :status="state.status"
@@ -97,6 +99,7 @@ function position(value?: number): string {
         !state.status?.paused &&
         !playback.length &&
         !state.status?.assistant &&
+        !state.status?.browser?.active &&
         !foreground &&
         !work &&
         !state.status?.game &&

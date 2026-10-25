@@ -25,6 +25,7 @@ export const trackerPlaybackSchema = z.object({
   duration_seconds: z.number().nonnegative().optional(),
 });
 export const foregroundSchema = z.object({
+  website: z.string().optional(),
   recording: z.boolean().optional(),
   fullscreen: z.boolean().optional(),
   game_candidate: z.boolean().optional(),
@@ -45,6 +46,7 @@ export const trackerStatusSchema = z.object({
     .nullable()
     .optional(),
   assistant: foregroundSchema.nullable().optional(),
+  browser: foregroundSchema.nullable().optional(),
   game: foregroundSchema.nullable().optional(),
   foreground: foregroundSchema.nullable().optional(),
   voice: z

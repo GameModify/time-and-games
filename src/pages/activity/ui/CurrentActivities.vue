@@ -29,7 +29,8 @@ function category(id: string): Category | undefined {
 .current-activities {
   padding: 14px 20px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  min-height: 64px;
   gap: 12px;
   background: var(--panel);
   border-block: 1px solid var(--line);
@@ -43,7 +44,8 @@ h3 {
   gap: 8px;
   font-size: 14px;
   font-weight: 500;
-  margin: 8px 0 0;
+  margin: 0;
+  line-height: 1.5;
   flex-shrink: 0;
   color: var(--success-text);
 }
@@ -85,6 +87,7 @@ button > span {
 
 p {
   margin: 0;
+  line-height: 1.5;
   color: var(--muted);
   font-size: 13px;
 }

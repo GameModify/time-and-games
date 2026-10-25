@@ -48,8 +48,8 @@ export function duration(ms: number, seconds = false) {
   return seconds
     ? `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
     : h
-      ? `${h} ч ${m} м`
-      : `${m} м`;
+      ? [String(h), 'ч', String(m), 'min'].join(' ')
+      : String(m) + ' min';
 }
 
 export function localInput(value: DateValue) {

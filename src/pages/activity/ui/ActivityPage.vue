@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { recentHoursLabel } from '../model/timelineSummary.ts';
-import WebsitesSummary from './WebsitesSummary.vue';
 import type { WorkspaceView } from '../../../features/workspace/index.ts';
 import type { EditorView } from '../../../features/record-editor/index.ts';
 
@@ -187,13 +186,6 @@ const donutGradient = computed(() => {
         </div>
       </div>
 
-      <WebsitesSummary
-        v-if="page === 'dashboard' && view === 'day'"
-        :sessions="daySessions"
-        :categories="categories"
-        :now="now"
-        :date="date"
-      />
       <PeriodChart
         v-if="page === 'analytics'"
         :buckets="chartBuckets"

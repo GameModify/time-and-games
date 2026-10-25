@@ -14,9 +14,9 @@ const inForeground = computed(() => props.status?.foreground?.resource_id === ga
     <Play v-if="game.active" :size="16" /><Pause v-else :size="16" />
     <div>
       <strong>{{ game.title }}</strong>
-      <small v-if="!game.active">2 минуты вне игры или без действий, учёт приостановлен</small>
+      <small v-if="!game.active">Игра неактивна, время не учитывается</small>
       <small v-else-if="inForeground">Игра в активном окне · учитывается</small>
-      <small v-else>Игра запущена в фоне · учёт продолжается до 2 минут</small>
+      <small v-else>Игра в фоне · учёт на паузе</small>
     </div>
   </div>
 </template>
