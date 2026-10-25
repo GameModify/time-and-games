@@ -33,7 +33,7 @@ void test('only selected dashboard metrics render, in order, including an empty 
     views.map((card) => card.id),
     ['category:video', 'metric:total'],
   );
-  assert.equal(views[0]?.value, '1 ч 0 min');
+  assert.equal(views[0]?.value, '1 ч 0 мин');
   assert.deepEqual(dashboardMetrics({ cards: [] }, context), []);
 });
 void test('timer cards adapt to analytics and unknown categories are omitted', () => {

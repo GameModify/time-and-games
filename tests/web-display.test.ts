@@ -5,9 +5,9 @@ import { setupWebTracking } from '../server/tracking/web-setup.ts';
 import { DatabaseSync } from 'node:sqlite';
 import { initializeTracking } from '../server/tracking/storage.ts';
 void test('duration uses an unambiguous minute suffix in short and hour formats', () => {
-  assert.equal(duration(15 * 60000), '15 min');
-  assert.equal(duration(67 * 60000), '1 ч 7 min');
-  assert.equal(duration(0), '0 min');
+  assert.equal(duration(15 * 60000), '15 мин');
+  assert.equal(duration(67 * 60000), '1 ч 7 мин');
+  assert.equal(duration(0), '0 мин');
   assert.equal(duration(15000, true), '00:00:15');
 });
 void test('the default website category is renamed without replacing custom names', () => {

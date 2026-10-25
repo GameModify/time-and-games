@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import { usePlotWidth } from '../model/usePlotWidth.ts';
+import { plotTicks } from '../model/timelineSummary.ts';
 import { ChevronDown, ChevronUp } from 'lucide-vue-next';
 import type { TimelineOrder } from '../model/timelineSummary.ts';
 import type { CategoryLane, TrackRange } from '../../../entities/activity/index.ts';
-import { overviewTicks, trackPercent } from '../../../entities/activity/index.ts';
+import { trackPercent } from '../../../entities/activity/index.ts';
 import { duration, localDate } from '../../../shared/lib/date.ts';
 import { clock, shortDate } from '../../../shared/lib/format.ts';
 import { useTimelineDrag, dragStyle } from '../model/useTimelineDrag.ts';
@@ -21,7 +23,9 @@ const { drag, skippedClick, down, move, up, cancel } = useTimelineDrag(
     emit('zoom', range);
   },
 );
-const ticks = computed(() => overviewTicks(props.range));
+const axisPlot = ref<HTMLElement | null>(null);
+const plotWidth = usePlotWidth(axisPlot);
+const ticks = computed(() => plotTicks(props.range, plotWidth.value));
 const showDates = computed(() => localDate(props.range.from) !== localDate(props.range.to - 1));
 const current = computed(() => props.now >= props.range.from && props.now <= props.range.to);
 function percent(value: number): string {
@@ -50,7 +54,7 @@ function axisClock(value: number): string {
   <div class="overview" aria-label="Обзор занятий по категориям">
     <div class="axis row" :class="{ 'dated-axis': showDates }">
       <span>Категория</span>
-      <div class="plot axis-plot">
+      <div ref="axisPlot" class="plot axis-plot">
         <span v-for="tick in ticks" :key="tick" class="tick" :style="{ left: percent(tick) }">
           {{ axisClock(tick) }}<small v-if="showDates">{{ shortDate(localDate(tick)) }}</small>
         </span>
@@ -261,33 +265,44 @@ button:focus-visible {
     padding-inline: 14px;
   }
   .row {
-    grid-template-columns: 115px minmax(0, 1fr) 67px;
-    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0 12px;
+  }
+  .axis > span {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .sort-total {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .axis-plot {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    height: 38px;
+  }
+  .dated-axis .axis-plot {
+    height: 54px;
+  }
+  .lane {
+    padding-block: 6px;
+    border-top: 1px solid var(--line);
   }
   .category-label {
+    grid-column: 1;
+    grid-row: 1;
     font-size: 13px;
     gap: 7px;
+    padding-block: 6px;
   }
   .total {
+    grid-column: 2;
+    grid-row: 1;
     font-size: 12px;
   }
-}
-@media (max-width: 420px) {
-  .row {
-    grid-template-columns: 90px minmax(0, 1fr) 60px;
-    gap: 5px;
-  }
-  .category-label i {
-    display: none;
-  }
-  .axis {
-    font-size: 11px;
-  }
-  .axis-plot .tick:nth-child(even):not(:last-child) {
-    display: none;
-  }
-  .dated-axis .tick:not(:first-child):not(:last-child) {
-    display: none;
+  .lane > .plot {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
 }
 </style>

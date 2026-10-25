@@ -34,9 +34,10 @@ export function shiftedTrackRange(range: TrackRange, bounds: TrackRange, directi
   const from = Math.max(bounds.from, Math.min(bounds.to - width, range.from + (direction * width) / 2));
   return { from, to: from + width };
 }
-export function overviewTicks(range: TrackRange): number[] {
+export function overviewTicks(range: TrackRange, maxIntervals = 5): number[] {
+  if (maxIntervals <= 1) return [range.from, range.to];
   const steps = [1, 5, 15, 30, 60, 120, 180, 360, 720].map((value) => value * minute);
-  const step = steps.find((value) => (range.to - range.from) / value <= 5) ?? 12 * 3600000;
+  const step = steps.find((value) => (range.to - range.from) / value <= maxIntervals) ?? 12 * 3600000;
   const ticks = [range.from];
   const offset = new Date(range.from).getTimezoneOffset() * minute;
   for (let tick = Math.ceil((range.from - offset) / step) * step + offset; tick < range.to; tick += step)

@@ -58,6 +58,10 @@ const {
 const { editSession, editGame } = toRefs(props.editor);
 const recordCount = computed(() => activityGroups(daySessions.value, now.value).length);
 const balance = computed(() => props.model.overviewStats);
+const balanceTime = computed(() => {
+  const minutes = Math.max(0, Math.floor(balance.value.categoryTotal / 60000));
+  return { hours: Math.floor(minutes / 60), minutes: minutes % 60 };
+});
 const balanceCategories = computed(() =>
   balance.value.byCategory
     .filter((category) => category.duration > 0)
@@ -261,7 +265,11 @@ const donutGradient = computed(() => {
         <div class="donut-wrap">
           <div class="donut" :style="{ background: donutGradient }">
             <div>
-              <small>По занятиям</small><strong>{{ duration(balance.categoryTotal) }}</strong>
+              <small>По занятиям</small>
+              <strong :class="{ 'long-duration': balanceTime.hours >= 1000 }"
+                ><span v-if="balanceTime.hours">{{ balanceTime.hours }} ч</span
+                ><span>{{ balanceTime.minutes }} мин</span></strong
+              >
             </div>
           </div>
         </div>
