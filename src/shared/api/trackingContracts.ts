@@ -36,11 +36,17 @@ export const foregroundSchema = z.object({
   kind: z.enum(['focus', 'media', 'voice']),
   active: z.boolean(),
   idle_ms: z.number(),
+  idle_timeout_ms: z.number().positive().optional(),
   interaction_at: z.number().optional(),
   resource_kind: z.enum(['app', 'document', 'game', 'voice']).optional(),
   resource_id: z.string().optional(),
 });
+export const trackingPreferencesSchema = z.object({
+  idle_timeout_ms: z.number().int().min(60000).max(1800000).multipleOf(60000),
+});
+export type TrackingPreferences = z.infer<typeof trackingPreferencesSchema>;
 export const trackerStatusSchema = z.object({
+  idle_timeout_ms: trackingPreferencesSchema.shape.idle_timeout_ms.optional(),
   foreground_rule: z
     .object({ name: z.string(), activity: z.string(), project: z.string().optional() })
     .nullable()

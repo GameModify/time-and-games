@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { idleTimeout, inactivityMessage } from '../../../shared/lib/trackingIdle.ts';
+
 import { computed } from 'vue';
 import { Mic, Pause, Play } from 'lucide-vue-next';
 import type { TrackerStatus } from '../../../shared/api/trackingContracts.ts';
@@ -12,10 +14,10 @@ const active = computed(() => {
   if (!item?.active) return false;
   if (item.recording) return true;
   return item.interaction_at === undefined
-    ? item.idle_ms < 300000
+    ? item.idle_ms < idleTimeout(props.status)
     : item.interaction_at > 0 &&
         props.now >= item.interaction_at &&
-        props.now - item.interaction_at < 300000;
+        props.now - item.interaction_at < idleTimeout(props.status);
 });
 </script>
 <template>
@@ -29,7 +31,7 @@ const active = computed(() => {
           ? assistant.recording
             ? 'Запись голоса, время учитывается'
             : 'Время учитывается'
-          : '5 минут без действий, учёт приостановлен'
+          : inactivityMessage(status)
       }}</small>
     </div>
   </div>

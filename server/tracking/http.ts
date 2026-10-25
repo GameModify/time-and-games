@@ -1,11 +1,16 @@
 import type { ZodType } from 'zod';
 import { z } from 'zod';
 import {
+  trackingPreferencesSchema,
   trackerPageSchema,
   trackerStatusSchema,
   trackerRuleSchema,
 } from '../../src/shared/api/trackingContracts.ts';
-import type { ContentLabel, TrackerRule } from '../../src/shared/api/trackingContracts.ts';
+import type {
+  TrackingPreferences,
+  ContentLabel,
+  TrackerRule,
+} from '../../src/shared/api/trackingContracts.ts';
 import type { TrackingConfiguration } from './storage.ts';
 import { ensure } from '../http.ts';
 export function validateEndpoint(endpoint: string): string {
@@ -33,7 +38,7 @@ async function request<T>(
   config: TrackingConfiguration,
   route: string,
   schema: ZodType<T>,
-  body?: { paused: boolean } | TrackerRule[] | ContentLabel[],
+  body?: { paused: boolean } | TrackingPreferences | TrackerRule[] | ContentLabel[],
 ): Promise<T> {
   const response = await fetch(validateEndpoint(config.endpoint) + '/v1' + route, {
     method: body === undefined ? 'GET' : Array.isArray(body) ? 'PUT' : 'POST',
@@ -121,3 +126,6 @@ export async function upsertRule(config: TrackingConfiguration, rule: TrackerRul
   }
   throw new Error('Правила меняются одновременно. Повтори сохранение.');
 }
+
+export const savePreferences = (config: TrackingConfiguration, input: TrackingPreferences) =>
+  request(config, '/preferences', trackingPreferencesSchema, input);

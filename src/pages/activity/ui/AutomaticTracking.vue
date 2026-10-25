@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { idleTimeout, inactivityMessage } from '../../../shared/lib/trackingIdle.ts';
+
 import { computed } from 'vue';
 import { workingApplication } from '../model/workContext.ts';
 import BrowserTracking from './BrowserTracking.vue';
@@ -30,7 +32,7 @@ const foreground = computed(() => {
     : null;
 });
 const foregroundActive = computed(() =>
-  Boolean(foreground.value?.active && foreground.value.idle_ms < 300000),
+  Boolean(foreground.value?.active && foreground.value.idle_ms < idleTimeout(state.value?.status)),
 );
 function position(value?: number): string {
   if (value === undefined) return '';
@@ -81,7 +83,7 @@ function position(value?: number): string {
         <strong>{{ foreground.title }}</strong
         ><small
           >{{ foreground.resource_kind === 'game' ? 'Игра в активном окне' : 'Работа с документом' }} ·
-          {{ foregroundActive ? 'учитывается' : '5 минут без действий, учёт приостановлен' }}</small
+          {{ foregroundActive ? 'учитывается' : inactivityMessage(state?.status) }}</small
         >
       </div>
     </div>

@@ -3602,3 +3602,42 @@ b {
     font-size: 13px;
   }
 }
+
+.settings-disclosure > summary {
+  cursor: pointer;
+  list-style: none;
+}
+.settings-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.settings-disclosure > summary::after {
+  content: '+';
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 24px;
+}
+.settings-disclosure[open] > summary::after {
+  content: '−';
+}
+.settings-disclosure:not([open]) > summary {
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+.settings-disclosure > summary:focus-visible,
+.tracking-details > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.settings-panel .button {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.settings-panel .category-setting strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.settings-panel .category-setting > .icon-button {
+  flex-shrink: 0;
+}

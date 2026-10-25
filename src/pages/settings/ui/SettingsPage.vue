@@ -30,13 +30,13 @@ const { theme, setTheme } = toRefs(props.appearance);
 const { editCategory, remove, readBackup, open } = toRefs(props.editor);
 </script>
 <template>
-  <section class="panel settings-panel appearance-panel">
-    <div class="section-heading">
+  <details class="panel settings-panel settings-disclosure appearance-panel">
+    <summary class="section-heading">
       <div>
         <h2>Оформление</h2>
         <p class="muted">Выбери тему, в которой тебе комфортно. Выбор сохранится в этом браузере.</p>
       </div>
-    </div>
+    </summary>
     <div class="theme-options" role="group" aria-label="Тема оформления">
       <button
         :class="['theme-option', { selected: theme === 'dark' }]"
@@ -54,15 +54,19 @@ const { editCategory, remove, readBackup, open } = toRefs(props.editor);
         ><Check v-if="theme === 'light'" :size="18" />
       </button>
     </div>
-  </section>
+  </details>
   <TrackingPanel :categories="categories" />
-  <section class="panel settings-panel">
-    <div class="section-heading">
+  <details class="panel settings-panel settings-disclosure">
+    <summary class="section-heading">
       <div>
         <h2>Твои категории</h2>
         <p class="muted">Группируй занятия и выбирай, что считать работой.</p>
       </div>
-      <button class="button secondary" @click="editCategory()"><Plus :size="16" />Категория</button>
+    </summary>
+    <div class="backup-actions">
+      <button class="button secondary" @click="editCategory()">
+        <Plus :size="16" />Добавить категорию
+      </button>
     </div>
     <div v-for="group in groupNames" :key="group" class="category-group">
       <h3>{{ group }}</h3>
@@ -86,29 +90,29 @@ const { editCategory, remove, readBackup, open } = toRefs(props.editor);
         </button>
       </div>
     </div>
-  </section>
-  <section class="panel settings-panel">
-    <div class="section-heading">
+  </details>
+  <details class="panel settings-panel settings-disclosure">
+    <summary class="section-heading">
       <div>
         <h2>Данные под твоим контролем</h2>
         <p class="muted">Всё хранится локально в SQLite. Сохраняй резервные копии.</p>
       </div>
       <ShieldCheck :size="24" class="green-text" />
-    </div>
+    </summary>
     <div class="backup-actions">
       <a class="button secondary" href="/api/export" download
-        ><ArrowDownToLine :size="17" />Экспорт JSON</a
+        ><ArrowDownToLine :size="17" />Скачать резервную копию</a
       ><label class="button secondary file-button"
-        ><ArrowUpFromLine :size="17" />Восстановить из файла<input
+        ><ArrowUpFromLine :size="17" />Восстановить копию из файла<input
           type="file"
           accept=".json,application/json"
           @change="readBackup"
       /></label>
     </div>
     <p class="subtle-note">Восстановление заменяет текущие записи. Перед ним сохрани экспорт.</p>
-  </section>
-  <section class="panel settings-panel">
-    <div class="section-heading">
+  </details>
+  <details class="panel settings-panel settings-disclosure">
+    <summary class="section-heading">
       <div>
         <h2>Сброс данных</h2>
         <p class="muted">
@@ -116,7 +120,7 @@ const { editCategory, remove, readBackup, open } = toRefs(props.editor);
           появятся заново.
         </p>
       </div>
-    </div>
+    </summary>
     <div class="backup-actions">
       <button class="button danger-button" @click="open('reset', { confirmation: '' })">
         <Trash2 :size="17" />Сбросить данные
@@ -125,7 +129,7 @@ const { editCategory, remove, readBackup, open } = toRefs(props.editor);
     <p class="subtle-note">
       Перед сбросом сохрани резервную копию. Отменить сброс можно только восстановлением из файла.
     </p>
-  </section>
+  </details>
   <section class="panel settings-panel about-panel">
     <span class="brand-icon"><Gamepad2 :size="25" /></span>
     <div>

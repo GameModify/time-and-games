@@ -5,6 +5,9 @@ import CheckboxField from '../../../shared/ui/CheckboxField.vue';
 import TrackingInboxRow from './TrackingInboxRow.vue';
 import WorkRules from './WorkRules.vue';
 import TrackingRules from './TrackingRules.vue';
+import { idleTimeout } from '../../../shared/lib/trackingIdle.ts';
+import TrackingPreferences from './TrackingPreferences.vue';
+import TrackingStatus from './TrackingStatus.vue';
 import { useTracking } from '../model/useTracking.ts';
 defineProps<{ categories: Category[] }>();
 const { model, actions } = useTracking();
@@ -22,118 +25,109 @@ const { model, actions } = useTracking();
     </div>
     <p v-if="model.error" class="alert error" role="alert">{{ model.error }}</p>
     <p v-if="model.notice" class="tracking-notice" role="status">{{ model.notice }}</p>
-    <form class="tracking-connection" @submit.prevent="actions.save">
-      <CheckboxField v-model="model.form.enabled" label="Подключить сервис трекинга" />
-      <div class="tracking-fields">
-        <label
-          >Адрес сервиса<input
-            v-model="model.form.endpoint"
-            type="url"
-            required
-            placeholder="http://127.0.0.1:3536"
-        /></label>
-        <label
-          >Ключ подключения<input
-            v-model="model.token"
-            type="password"
-            autocomplete="off"
-            :placeholder="
-              model.state?.settings.token_set
-                ? 'Ключ сохранён'
-                : 'Ключ read из локальных настроек трекера'
-            "
-        /></label>
-      </div>
-      <p class="subtle-note">
-        Сайт запускается и работает при отключённом трекере. Отключение подключения останавливает импорт;
-        сбором управляет отдельная кнопка ниже.
-      </p>
-      <CheckboxField
-        v-model="model.form.auto_import"
-        label="Автоматически добавлять завершённые интервалы с настроенной категорией"
-      />
-      <details class="tracking-details">
-        <summary>Связь меток с категориями</summary>
-        <p class="muted">
-          Например: coding → Кодинг, projects → Проекты, communication → Общение, video → YouTube /
-          Видео. Неизвестные занятия остаются на проверке. Для папки научных документов используй метку
-          science, для остальных документов documents, для игр games. Обычные сайты используют web и по
-          умолчанию не относятся к рабочему времени.
+    <TrackingStatus
+      v-if="model.state?.settings.enabled"
+      :state="model.state"
+      :busy="model.busy"
+      @pause="actions.pause"
+    />
+    <details class="tracking-details connection-details">
+      <summary>Подключение и импорт данных</summary>
+      <p class="muted">Адрес сервиса, ключ и категории для автоматического добавления записей.</p>
+      <form class="tracking-connection" @submit.prevent="actions.save">
+        <CheckboxField
+          v-model="model.form.enabled"
+          label="Использовать Activity Tracker на этом сайте"
+        />
+        <div class="tracking-fields">
+          <label
+            >Адрес сервиса<input
+              v-model="model.form.endpoint"
+              type="url"
+              required
+              placeholder="http://127.0.0.1:3536"
+          /></label>
+          <label
+            >Ключ подключения<input
+              v-model="model.token"
+              type="password"
+              autocomplete="off"
+              :placeholder="
+                model.state?.settings.token_set
+                  ? 'Ключ сохранён'
+                  : 'Ключ read из локальных настроек трекера'
+              "
+          /></label>
+        </div>
+        <p class="subtle-note">
+          Сайт запускается и работает при отключённом трекере. Отключение подключения останавливает
+          импорт; сбором управляет отдельная кнопка ниже.
         </p>
-        <div v-for="(mapping, index) in model.form.mappings" :key="index" class="tracking-mapping">
-          <label>Метка<input v-model="mapping.activity" maxlength="80" placeholder="coding" /></label
-          ><label
-            >Категория<select v-model="mapping.category_id">
-              <option value="">Выбери категорию</option>
-              <option v-for="entry in categories" :key="entry.id" :value="entry.id">
-                {{ entry.name }}
-              </option>
-            </select></label
+        <CheckboxField
+          v-model="model.form.auto_import"
+          label="Автоматически добавлять завершённые интервалы с настроенной категорией"
+        />
+        <details class="tracking-details">
+          <summary>Связь меток с категориями</summary>
+          <p class="muted">
+            Например: coding → Кодинг, projects → Проекты, communication → Общение, video → YouTube /
+            Видео. Неизвестные занятия остаются на проверке. Для папки научных документов используй метку
+            science, для остальных документов documents, для игр games. Обычные сайты используют web и по
+            умолчанию не относятся к рабочему времени.
+          </p>
+          <div v-for="(mapping, index) in model.form.mappings" :key="index" class="tracking-mapping">
+            <label>Метка<input v-model="mapping.activity" maxlength="80" placeholder="coding" /></label
+            ><label
+              >Категория<select v-model="mapping.category_id">
+                <option value="">Выбери категорию</option>
+                <option v-for="entry in categories" :key="entry.id" :value="entry.id">
+                  {{ entry.name }}
+                </option>
+              </select></label
+            ><button
+              type="button"
+              class="text-button danger"
+              title="Убрать соответствие метки и категории. Уже добавленные записи останутся"
+              @click="model.form.mappings.splice(index, 1)"
+            >
+              Убрать
+            </button>
+          </div>
+          <button type="button" class="button secondary" @click="actions.addMapping">
+            Добавить соответствие
+          </button>
+        </details>
+        <p id="tracking-sync-help" class="subtle-note">
+          Обновление получает данные из Activity Tracker. При включённом автоимпорте подходящие интервалы
+          добавляются на таймлайн, остальные доступны в разделе «Интервалы на проверку».
+        </p>
+        <div class="backup-actions">
+          <button
+            class="button primary"
+            :disabled="model.busy"
+            title="Сохранить адрес, ключ, импорт и связи категорий для этого сайта"
+          >
+            Сохранить настройки подключения</button
           ><button
             type="button"
-            class="text-button danger"
-            @click="model.form.mappings.splice(index, 1)"
+            class="button secondary"
+            :disabled="model.busy || !model.state?.settings.enabled"
+            title="Получить свежие интервалы из трекера и выполнить включённый автоимпорт"
+            aria-describedby="tracking-sync-help"
+            @click="actions.sync"
           >
-            Убрать
+            <RefreshCw :size="16" />Обновить данные трекера
           </button>
         </div>
-        <button type="button" class="button secondary" @click="actions.addMapping">
-          Добавить соответствие
-        </button>
-      </details>
-      <div class="backup-actions">
-        <button class="button primary" :disabled="model.busy">Сохранить подключение</button
-        ><button
-          type="button"
-          class="button secondary"
-          :disabled="model.busy || !model.state?.settings.enabled"
-          @click="actions.sync"
-        >
-          <RefreshCw :size="16" />Синхронизировать
-        </button>
-      </div>
-    </form>
-    <div v-if="model.state?.settings.enabled" class="tracking-status" role="status">
-      <strong>{{ model.state.connected ? 'Сервис подключён' : 'Нет связи с сервисом' }}</strong
-      ><span v-if="model.state.error">{{ model.state.error }}</span>
-      <template v-if="model.state.status"
-        ><span>Сбор: {{ model.state.status.paused ? 'приостановлен' : 'включён' }}</span
-        ><span
-          >Окна Windows:
-          {{
-            model.state.status.desktop_error
-              ? 'ошибка сборщика'
-              : model.state.status.desktop_available
-                ? 'сборщик доступен'
-                : 'недоступны на этой системе'
-          }}</span
-        ><span
-          >Chrome:
-          {{
-            model.state.status.browser_at && Date.now() - model.state.status.browser_at < 30000
-              ? 'события поступают' +
-                (model.state.status.browser_version ? ' · ' + model.state.status.browser_version : '')
-              : 'ожидаем расширение'
-          }}</span
-        ><span v-if="model.state.status.voice"
-          >Discord:
-          {{
-            model.state.status.voice.state === 'connected'
-              ? 'подключение к голосовому каналу подтверждено'
-              : model.state.status.voice.state === 'disconnected'
-                ? 'приложение не запущено'
-                : 'подключение не подтверждено, голосовое время не учитывается'
-          }}</span
-        >
-        <span
-          >Чаты и документы: пауза после 5 минут без действий. Для чатов включи проверку действий в
-          настройках расширения.</span
-        >
-        <button class="button secondary" :disabled="model.busy" @click="actions.pause">
-          {{ model.state.status.paused ? 'Продолжить сбор' : 'Приостановить сбор' }}
-        </button></template
-      >
-    </div>
+      </form>
+    </details>
+    <TrackingPreferences
+      v-if="model.state?.connected"
+      v-model="model.idleMinutes"
+      :busy="model.busy"
+      :supported="model.state.status?.idle_timeout_ms !== undefined"
+      @save="actions.savePreferences"
+    />
     <WorkRules
       v-if="model.state?.connected"
       v-model="model.rules"
@@ -141,6 +135,7 @@ const { model, actions } = useTracking();
       :status="model.state.status"
       :categories="categories"
       :mappings="model.form.mappings"
+      :idle-timeout="idleTimeout(model.state.status)"
       @save="actions.saveRules"
     />
     <TrackingRules
@@ -151,9 +146,9 @@ const { model, actions } = useTracking();
       @folder="actions.addFolderRule"
       @save="actions.saveRules"
     />
-    <details class="tracking-details" :open="model.items.length > 0">
+    <details class="tracking-details">
       <summary>
-        Проверить интервалы <span class="muted">({{ model.items.length }})</span>
+        Интервалы на проверку <span class="muted">({{ model.items.length }})</span>
       </summary>
       <p class="muted">
         Добавляй нужное в таймлайн. Время, уже записанное в выбранной категории, повторно не добавляется.
@@ -173,12 +168,13 @@ const { model, actions } = useTracking();
   </section>
 </template>
 <style scoped>
-.tracking-connection,
-.tracking-status {
+.tracking-connection {
   display: grid;
   gap: 18px;
 }
 .tracking-connection {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
   padding: 0 24px 24px;
 }
 .tracking-panel > .tracking-details {
@@ -187,7 +183,7 @@ const { model, actions } = useTracking();
 .tracking-fields,
 .tracking-mapping {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
   align-items: end;
 }
@@ -197,6 +193,7 @@ const { model, actions } = useTracking();
 }
 .tracking-panel label:not(.checkbox-field) {
   display: grid;
+  min-width: 0;
   gap: 8px;
   color: var(--muted);
   font-size: 14px;
@@ -219,13 +216,6 @@ const { model, actions } = useTracking();
 .tracking-details p {
   margin: 16px 0;
 }
-.tracking-status {
-  margin: 0 24px 24px;
-  padding: 18px;
-  border-radius: 10px;
-  background: var(--surface);
-  font-size: 14px;
-}
 .tracking-notice {
   margin: 0 24px 18px;
   color: var(--accent-text);
@@ -241,6 +231,7 @@ const { model, actions } = useTracking();
 }
 :deep(.tracking-rule label:not(.checkbox-field)) {
   display: grid;
+  min-width: 0;
   gap: 8px;
   font-size: 14px;
 }
@@ -277,5 +268,13 @@ const { model, actions } = useTracking();
   :deep(.tracking-inbox-row) {
     grid-template-columns: 1fr;
   }
+}
+</style>
+
+<style scoped>
+.connection-details .tracking-connection {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0;
 }
 </style>

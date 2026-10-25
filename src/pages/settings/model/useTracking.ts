@@ -34,6 +34,7 @@ function createState() {
     rules: [] as TrackerRule[],
     form: emptyConnection(),
     token: '',
+    idleMinutes: 5,
     busy: false,
     error: '',
     notice: '',
@@ -66,6 +67,7 @@ class TrackingActions {
     await this.run(async () => {
       await this.refresh();
       if (this.model.state) this.model.form = connectionForm(this.model.state.settings);
+      this.model.idleMinutes = (this.model.state?.status?.idle_timeout_ms ?? 300000) / 60000;
       if (this.model.state?.connected)
         this.model.rules = await readApi('/tracking/rules', trackerRuleSchema.array());
     });
@@ -81,6 +83,13 @@ class TrackingActions {
       if (this.model.state?.connected)
         this.model.rules = await readApi('/tracking/rules', trackerRuleSchema.array());
       this.model.notice = 'Настройки подключения сохранены';
+    });
+  };
+  savePreferences = async () => {
+    await this.run(async () => {
+      await api('/tracking/preferences', 'POST', { idle_timeout_ms: this.model.idleMinutes * 60000 });
+      await this.refresh();
+      this.model.notice = 'Время бездействия сохранено. Оно применяется к новым событиям.';
     });
   };
   sync = async () => {
@@ -167,6 +176,7 @@ export type TrackingActionsView = Pick<
   | 'ignore'
   | 'pause'
   | 'saveRules'
+  | 'savePreferences'
   | 'addRule'
   | 'addMapping'
 >;

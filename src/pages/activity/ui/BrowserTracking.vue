@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { idleTimeout } from '../../../shared/lib/trackingIdle.ts';
+
 import { computed } from 'vue';
 import { Globe2 } from 'lucide-vue-next';
 import type { TrackerStatus } from '../../../shared/api/trackingContracts.ts';
@@ -8,7 +10,7 @@ const browser = computed(() => {
   return item?.active &&
     props.now >= item.timestamp &&
     props.now - item.timestamp < 15000 &&
-    item.idle_ms < 300000
+    item.idle_ms < idleTimeout(props.status)
     ? item
     : null;
 });

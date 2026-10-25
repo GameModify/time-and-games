@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { idleTimeout, inactivityMessage } from '../../../shared/lib/trackingIdle.ts';
+
 import { workingApplication } from '../model/workContext.ts';
 import { computed } from 'vue';
 import { BriefcaseBusiness, Pause, Play } from 'lucide-vue-next';
@@ -13,7 +15,9 @@ const props = defineProps<{
 const context = computed(() =>
   workingApplication(props.status, props.settings, props.categories, props.now),
 );
-const active = computed(() => context.value?.app.active && context.value.app.idle_ms < 300000);
+const active = computed(
+  () => context.value?.app.active && context.value.app.idle_ms < idleTimeout(props.status),
+);
 </script>
 <template>
   <div v-if="context" class="work-tracking">
@@ -23,7 +27,7 @@ const active = computed(() => context.value?.app.active && context.value.app.idl
       ><small>{{ context.app.app }} · {{ context.app.title }}</small
       ><small
         ><Play v-if="active" :size="12" /><Pause v-else :size="12" />{{
-          active ? 'Рабочее время учитывается' : '5 минут без действий, учёт приостановлен'
+          active ? 'Рабочее время учитывается' : inactivityMessage(status)
         }}</small
       >
     </div>

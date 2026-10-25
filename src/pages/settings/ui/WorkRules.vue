@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { idleMinutes } from '../../../shared/lib/trackingIdle.ts';
 import { computed, reactive, ref } from 'vue';
 import type {
   TrackerRule,
@@ -12,6 +13,7 @@ import { errorMessage } from '../../../shared/lib/errors.ts';
 const rules = defineModel<TrackerRule[]>({ required: true });
 const props = defineProps<{
   busy: boolean;
+  idleTimeout: number;
   status: TrackerStatus | null;
   categories: Category[];
   mappings: TrackingConnection['mappings'];
@@ -49,12 +51,12 @@ function categoryName(id: string): string {
 }
 </script>
 <template>
-  <section class="work-rules">
-    <h3>Рабочие инструменты и проекты</h3>
+  <details class="work-rules tracking-details">
+    <summary>Рабочие инструменты и проекты</summary>
     <p class="muted">
       Один раз свяжи приложение, сайт или обучающий канал с занятием. Проект необязателен. Сайты
-      учитываются только в активной вкладке, приложения в активном окне. После 5 минут без действий учёт
-      приостанавливается.
+      учитываются только в активной вкладке, приложения в активном окне. Пауза бездействия:
+      {{ idleMinutes(idleTimeout) }}. Видео учитывается по воспроизведению.
     </p>
     <form class="work-rule-form" @submit.prevent="add">
       <label
@@ -99,12 +101,18 @@ function categoryName(id: string): string {
           placeholder="Например, Time &amp; Games"
       /></label>
       <div class="backup-actions">
-        <button class="button primary" :disabled="busy || !workMappings.length">Сохранить правило</button
+        <button
+          class="button primary"
+          :disabled="busy || !workMappings.length"
+          title="Сохранить связь инструмента с рабочим занятием и проектом для следующих событий"
+        >
+          Сохранить правило</button
         ><button
           v-if="status?.foreground?.app"
           type="button"
           class="button secondary"
           :disabled="busy"
+          title="Вставить имя приложения из текущего активного окна Windows"
           @click="currentApp"
         >
           Подставить текущее приложение
@@ -117,7 +125,7 @@ function categoryName(id: string): string {
       видео или слова в его названии. Изменения действуют на следующие отрезки; все правила можно
       изменить ниже.
     </p>
-  </section>
+  </details>
 </template>
 <style scoped>
 .work-rules {

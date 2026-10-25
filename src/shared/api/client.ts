@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type {
   Classification,
   GameApplication,
+  TrackingPreferences,
   TrackingConnection,
   TrackingImport,
   TrackingIgnore,
@@ -17,6 +18,7 @@ import type {
   SettingsWriteDto,
 } from './inputContracts.ts';
 export type WriteDto =
+  | TrackingPreferences
   | DashboardCards
   | Classification
   | SessionWriteDto

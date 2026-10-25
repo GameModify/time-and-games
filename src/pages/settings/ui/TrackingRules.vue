@@ -60,11 +60,29 @@ const emit = defineEmits<{ add: []; save: []; folder: [] }>();
       </button>
     </div>
     <div class="backup-actions">
-      <button class="button secondary" :disabled="busy" @click="emit('folder')">
+      <button
+        class="button secondary"
+        :disabled="busy"
+        title="Учитывать документы в выбранной папке и её подпапках"
+        @click="emit('folder')"
+      >
         Добавить папку документов
       </button>
-      <button class="button secondary" :disabled="busy" @click="emit('add')">Добавить правило</button
-      ><button class="button primary" :disabled="busy" @click="emit('save')">Сохранить правила</button>
+      <button
+        class="button secondary"
+        :disabled="busy"
+        title="Добавить правило для приложения, сайта или видео"
+        @click="emit('add')"
+      >
+        Добавить правило</button
+      ><button
+        class="button primary"
+        :disabled="busy"
+        title="Сохранить правила в Activity Tracker для следующих событий"
+        @click="emit('save')"
+      >
+        Сохранить правила
+      </button>
     </div>
   </details>
 </template>

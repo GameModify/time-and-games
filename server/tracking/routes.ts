@@ -8,6 +8,7 @@ import type { Express } from 'express';
 import type { DatabaseSync } from 'node:sqlite';
 import { z } from 'zod';
 import {
+  trackingPreferencesSchema,
   trackingConnectionSchema,
   trackingImportSchema,
   trackingIgnoreSchema,
@@ -16,7 +17,7 @@ import {
 import { ensure } from '../http.ts';
 import { TrackingController } from './controller.ts';
 import { configuration, initializeTracking, inbox, markInbox, updateConfiguration } from './storage.ts';
-import { pauseTracker, readRules, saveRules, validateEndpoint } from './http.ts';
+import { savePreferences, pauseTracker, readRules, saveRules, validateEndpoint } from './http.ts';
 import { importInterval } from './import.ts';
 function connectionRoutes(app: Express, controller: TrackingController): void {
   const db = controller.db;
@@ -50,7 +51,9 @@ function importRoutes(app: Express, db: DatabaseSync): void {
     res.json({ ok: true });
   });
 }
-function ruleRoutes(app: Express, db: DatabaseSync): void {
+function ruleRoutes(app: Express, controller: TrackingController): void {
+  const db = controller.db;
+  preferenceRoutes(app, controller);
   app.get('/api/tracking/rules', async (_req, res) => {
     res.json(await readRules(configuration(db)));
   });
@@ -71,7 +74,7 @@ export function registerTracking(app: Express, db: DatabaseSync): () => void {
   const controller = new TrackingController(db);
   connectionRoutes(app, controller);
   importRoutes(app, db);
-  ruleRoutes(app, db);
+  ruleRoutes(app, controller);
   gameRoutes(app, db);
   classificationRoutes(app, db);
   const timer = setInterval(() => {
@@ -90,5 +93,14 @@ function gameRoutes(app: Express, db: DatabaseSync): void {
       config = configuration(db);
     const rules = gameApplicationRules(await readRules(config), input);
     res.json(await saveRules(config, rules));
+  });
+}
+
+function preferenceRoutes(app: Express, controller: TrackingController): void {
+  app.post('/api/tracking/preferences', async (req, res) => {
+    const input = trackingPreferencesSchema.parse(req.body);
+    const result = await savePreferences(configuration(controller.db), input);
+    await controller.sync();
+    res.json(result);
   });
 }
