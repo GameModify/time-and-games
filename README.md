@@ -118,6 +118,8 @@ TNG_LAN_HOST=192.168.1.10
 <details>
 <summary><strong>Разработка и проверки</strong></summary>
 
+Для разработки используй Git-репозиторий или отдельный архив **Source code** со страницы релиза. Пользовательский ZIP предназначен для запуска готового сайта; тесты и конфигурация разработки остаются в исходниках.
+
 ```powershell
 node scripts/npm.ts ci
 node scripts/npm.ts run dev
@@ -131,14 +133,16 @@ node scripts/npm.ts run dev
 node scripts/npm.ts run verify
 ```
 
-Проверяются строгие типы, границы архитектуры, ESLint, форматирование, production-сборка и регрессии API/времени. Функции ограничены 20 строками и когнитивной сложностью 20. Правила: [CONTRIBUTING.md](CONTRIBUTING.md), [архитектура](docs/architecture.md).
+Проверяются строгие типы, границы архитектуры, ESLint, форматирование, production-сборка и регрессии API/времени. Функции ограничены 20 строками и когнитивной сложностью 20. Правила: [CONTRIBUTING.md](https://github.com/GameModify/time-and-games/blob/main/CONTRIBUTING.md), [архитектура](https://github.com/GameModify/time-and-games/blob/main/docs/architecture.md).
 
 </details>
 
 <details>
 <summary><strong>Подготовка релиза</strong></summary>
 
-На Windows после полной проверки выполни `npm run package:release` и `npm run smoke:release`. Пакет собирается из отслеживаемых Git файлов и `dist`, личные данные исключаются. Проверка распаковывает архив во временную папку, запускает Windows launcher с production-зависимостями, проверяет страницы и сохранность профиля после повторного запуска без сети. Тест не открывает браузер и не использует рабочую базу.
+На Windows после полной проверки выполни `npm run package:release` и `npm run smoke:release`. Пакет содержит `dist`, сервер с необходимыми локальными модулями, production-манифест и lockfile, launcher и пользовательскую документацию. Тесты, исходники интерфейса и конфигурация разработки исключаются явным списком файлов. Личные данные не копируются. Проверка распаковывает архив во временную папку, запускает Windows launcher с production-зависимостями, проверяет страницы и сохранность профиля после повторного запуска без сети. Тест не открывает браузер и не использует рабочую базу.
+
+[Состав пакета и правила выпуска](https://github.com/GameModify/time-and-games/blob/main/docs/release-packaging.md).
 
 Тег `vX.Y.Z`, совпадающий с `package.json`, запускает повторные проверки и публикует ZIP с SHA-256. [Описание 0.1.0](docs/releases/0.1.0.md).
 

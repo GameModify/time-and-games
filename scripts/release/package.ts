@@ -1,3 +1,5 @@
+import { runtimeFiles } from './runtime-files.ts';
+import { writeRuntimeManifest } from './manifest.ts';
 import { execFileSync } from 'node:child_process';
 import { mkdtemp, mkdir, cp, readFile, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
@@ -9,19 +11,22 @@ const manifest = z.object({ version: z.string().regex(/^\d+\.\d+\.\d+$/) });
 function git(args: string[]): string {
   return execFileSync('git', ['-c', 'safe.directory=' + root, ...args], { cwd: root, encoding: 'utf8' });
 }
-function sourceFiles(): string[] {
-  return git(['ls-files', '-z'])
-    .split('\0')
-    .filter(
-      (file) =>
-        Boolean(file) &&
-        !/^(?:data|\.github|\.qa|node_modules|dist)\//.test(file) &&
-        file !== '.env' &&
-        file !== 'AGENTS.md',
-    );
+function sourceFiles(version: string): string[] {
+  const documents = ['docs/tracking.md', 'docs/images/websites.png', 'docs/releases/' + version + '.md'];
+  return [
+    ...new Set([
+      ...runtimeFiles(root),
+      ...documents,
+      'README.md',
+      '.npmrc',
+      'package-lock.json',
+      'scripts/npm.ts',
+      'Запустить Time & Games.bat',
+    ]),
+  ];
 }
-async function stageSource(target: string): Promise<void> {
-  for (const file of sourceFiles()) {
+async function stageSource(target: string, version: string): Promise<void> {
+  for (const file of sourceFiles(version)) {
     const destination = path.join(target, file);
     await mkdir(path.dirname(destination), { recursive: true });
     await cp(path.join(root, file), destination);
@@ -52,7 +57,8 @@ async function packageRelease(temporary: string): Promise<void> {
   );
   const stage = path.join(temporary, 'TimeAndGames');
   await mkdir(stage);
-  await stageSource(stage);
+  await stageSource(stage, version);
+  await writeRuntimeManifest(root, stage);
   await writeFile(
     path.join(stage, 'release.json'),
     JSON.stringify({ version, commit: git(['rev-parse', 'HEAD']).trim() }),

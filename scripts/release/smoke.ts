@@ -1,3 +1,6 @@
+import { bootstrapSchema, sessionSchema } from '../../src/shared/api/contracts.ts';
+import { trackingStateSchema } from '../../src/shared/api/trackingContracts.ts';
+import { defaultProfile } from '../../src/shared/api/profileContracts.ts';
 import { spawn, execFileSync } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
@@ -10,6 +13,18 @@ import assert from 'node:assert/strict';
 import { z } from 'zod';
 import { profileSchema } from '../../src/shared/api/profileContracts.ts';
 const root = path.resolve(import.meta.dirname, '../..');
+const forbiddenRuntimeFiles = [
+  'tests',
+  'eslint.config.ts',
+  'tsconfig.json',
+  'vite.config.ts',
+  'src/pages',
+  'src/app',
+  'src/main.ts',
+  'scripts/release',
+  'scripts/quality',
+  'scripts/check-architecture.ts',
+];
 const launcher = 'Запустить Time & Games.bat';
 interface Launch {
   child: ChildProcess;
@@ -116,6 +131,7 @@ async function run(folder: string, first: boolean): Promise<void> {
   try {
     await ready(launch, base);
     await routes(base);
+    if (first) await factoryState(base);
     await profile(base, first);
     assert.equal(existsSync(path.join(folder, 'node_modules/vite')), false);
     assert.ok(existsSync(path.join(folder, 'data/time-and-games.sqlite')));
@@ -132,6 +148,7 @@ async function verify(directory: string): Promise<void> {
   for (const name of ['.env', '.git', 'data/activity.sqlite', 'data/time-and-games.sqlite'])
     assert.equal(existsSync(path.join(folder, name)), false, 'Private data in release: ' + name);
   assert.ok(existsSync(path.join(folder, 'release.json')));
+  await runtimeContents(folder);
   await run(folder, true);
   await run(folder, false);
   console.log(
@@ -155,4 +172,27 @@ function environment(folder: string, port: number, offline: boolean): NodeJS.Pro
     TNG_NO_BROWSER: '1',
     npm_config_offline: offline ? 'true' : 'false',
   };
+}
+
+async function factoryState(base: string): Promise<void> {
+  const state = bootstrapSchema.parse(await (await fetch(base + '/api/bootstrap')).json());
+  assert.deepEqual(state.profile, defaultProfile());
+  for (const items of [state.games, state.media, state.active, state.paused])
+    assert.equal(items.length, 0);
+  const sessions = sessionSchema.array().parse(await (await fetch(base + '/api/sessions')).json());
+  assert.equal(sessions.length, 0);
+  const tracking = trackingStateSchema.parse(await (await fetch(base + '/api/tracking')).json());
+  assert.equal(tracking.settings.enabled, false);
+  assert.equal(tracking.settings.token_set, false);
+  assert.equal(tracking.pending, 0);
+}
+async function runtimeContents(folder: string): Promise<void> {
+  for (const file of forbiddenRuntimeFiles)
+    assert.equal(existsSync(path.join(folder, file)), false, 'Development file: ' + file);
+  const schema = z.object({
+    scripts: z.object({ start: z.literal('node server/index.ts') }).strict(),
+    devDependencies: z.never().optional(),
+  });
+  schema.parse(JSON.parse(await readFile(path.join(folder, 'package.json'), 'utf8')));
+  assert.equal(existsSync(path.join(folder, '.npm-cache')), false);
 }
