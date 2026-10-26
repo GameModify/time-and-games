@@ -128,45 +128,43 @@ function edit(session: Session): void {
     <div class="overview-toolbar">
       <TimelinePeriodPicker :hours="hours" :active="!selection" @period="changeMode" />
     </div>
+    <div v-if="windowLanes.length || selection" class="range-toolbar">
+      <span>{{ rangeLabel }}<small>Пробелы на дорожках - время без учёта в этой категории.</small></span>
+      <div class="range-actions">
+        <button
+          class="icon-button"
+          aria-label="Предыдущий участок графика"
+          :disabled="!zoomed || range.from <= bounds.from"
+          @click="selection = shiftedTrackRange(range, bounds, -1)"
+        >
+          <ChevronLeft :size="17" />
+        </button>
+        <button
+          class="icon-button"
+          aria-label="Приблизить график"
+          :disabled="range.to - range.from <= 60000"
+          @click="selection = zoomTrackRange(range, now)"
+        >
+          <ZoomIn :size="17" />
+        </button>
+        <button
+          class="icon-button"
+          aria-label="Следующий участок графика"
+          :disabled="!zoomed || range.to >= bounds.to"
+          @click="selection = shiftedTrackRange(range, bounds, 1)"
+        >
+          <ChevronRight :size="17" />
+        </button>
+        <button v-if="selection" class="text-button" @click="selection = null">
+          Сбросить приближение
+        </button>
+      </div>
+    </div>
     <div v-if="!windowLanes.length" class="track-empty">
       <Clock3 :size="28" /><strong>За этот период пока нет записей</strong
       ><button class="button secondary" @click="emit('edit')"><Plus :size="15" />Добавить запись</button>
     </div>
     <template v-else>
-      <div class="range-toolbar">
-        <span
-          >{{ rangeLabel }}<small>Пробелы на дорожках - время без учёта в этой категории.</small></span
-        >
-        <div class="range-actions">
-          <button
-            class="icon-button"
-            aria-label="Предыдущий участок графика"
-            :disabled="!zoomed || range.from <= bounds.from"
-            @click="selection = shiftedTrackRange(range, bounds, -1)"
-          >
-            <ChevronLeft :size="17" />
-          </button>
-          <button
-            class="icon-button"
-            aria-label="Приблизить график"
-            :disabled="range.to - range.from <= 60000"
-            @click="selection = zoomTrackRange(range, now)"
-          >
-            <ZoomIn :size="17" />
-          </button>
-          <button
-            class="icon-button"
-            aria-label="Следующий участок графика"
-            :disabled="!zoomed || range.to >= bounds.to"
-            @click="selection = shiftedTrackRange(range, bounds, 1)"
-          >
-            <ChevronRight :size="17" />
-          </button>
-          <button v-if="selection" class="text-button" @click="selection = null">
-            Сбросить приближение
-          </button>
-        </div>
-      </div>
       <TimelineOverview
         :lanes="visible"
         :range="range"
