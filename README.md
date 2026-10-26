@@ -29,7 +29,7 @@
 ## Быстрый старт
 
 1. Установи **[Node.js 24.12+ с npm](https://nodejs.org/)**.
-2. Скачай **`TimeAndGames-0.1.0.zip`** из [релизов](https://github.com/GameModify/time-and-games/releases/latest) и распакуй в отдельную папку.
+2. Скачай **`TimeAndGames-0.1.1.zip`** из [релизов](https://github.com/GameModify/time-and-games/releases/latest) и распакуй в отдельную папку.
 3. Открой **«Запустить Time & Games.bat»**.
 4. Перейди на **[127.0.0.1:3535](http://127.0.0.1:3535)**. Окно сервера оставь открытым.
 
@@ -144,7 +144,7 @@ node scripts/npm.ts run verify
 
 [Состав пакета и правила выпуска](https://github.com/GameModify/time-and-games/blob/main/docs/release-packaging.md).
 
-Тег `vX.Y.Z`, совпадающий с `package.json`, запускает повторные проверки и публикует ZIP с SHA-256. [Описание 0.1.0](docs/releases/0.1.0.md).
+Тег `vX.Y.Z`, совпадающий с `package.json`, запускает повторные проверки и публикует ZIP с SHA-256. [Описание 0.1.1](docs/releases/0.1.1.md).
 
 </details>
 
