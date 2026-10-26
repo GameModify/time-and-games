@@ -192,7 +192,15 @@ async function runtimeContents(folder: string): Promise<void> {
   const schema = z.object({
     scripts: z.object({ start: z.literal('node server/index.ts') }).strict(),
     devDependencies: z.never().optional(),
+    license: z.literal('SEE LICENSE IN LICENSE.md'),
   });
   schema.parse(JSON.parse(await readFile(path.join(folder, 'package.json'), 'utf8')));
   assert.equal(existsSync(path.join(folder, '.npm-cache')), false);
+  assert.ok(
+    (await readFile(path.join(folder, 'THIRD-PARTY-NOTICES.txt'), 'utf8')).includes('node_modules/vue'),
+  );
+  assert.equal(
+    await readFile(path.join(folder, 'LICENSE.md'), 'utf8'),
+    await readFile(path.join(root, 'LICENSE.md'), 'utf8'),
+  );
 }

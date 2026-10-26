@@ -1,3 +1,4 @@
+import { writeNotices } from './notices.ts';
 import { runtimeFiles } from './runtime-files.ts';
 import { writeRuntimeManifest } from './manifest.ts';
 import { execFileSync } from 'node:child_process';
@@ -18,6 +19,7 @@ function sourceFiles(version: string): string[] {
       ...runtimeFiles(root),
       ...documents,
       'README.md',
+      'LICENSE.md',
       '.npmrc',
       'package-lock.json',
       'scripts/npm.ts',
@@ -26,6 +28,7 @@ function sourceFiles(version: string): string[] {
   ];
 }
 async function stageSource(target: string, version: string): Promise<void> {
+  await writeNotices(root, target);
   for (const file of sourceFiles(version)) {
     const destination = path.join(target, file);
     await mkdir(path.dirname(destination), { recursive: true });

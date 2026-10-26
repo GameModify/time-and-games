@@ -43,5 +43,6 @@
     "vue": "^3.5.18",
     "vue-router": "^5.4.0",
     "vue-tsc": "^3.3.13"
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
 }

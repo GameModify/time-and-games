@@ -4,6 +4,7 @@ import path from 'node:path';
 import { z } from 'zod';
 const manifestSchema = z.object({
   name: z.string(),
+  license: z.literal('SEE LICENSE IN LICENSE.md'),
   version: z.string(),
   private: z.boolean(),
   type: z.literal('module'),
